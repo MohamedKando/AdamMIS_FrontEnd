@@ -1,0 +1,367 @@
+<div class="content-header">
+    <h2>DMS Report Generator</h2>
+    <div class="breadcrumb">
+        <a href="#" routerLink="/dashboard">Home</a> > 
+        <a href="#" routerLink="/dms-report">DMS Report</a> > 
+        Report Management
+    </div>
+</div>
+
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-button" 
+                [class.active]="activeTab === 'categories'" 
+                (click)="setActiveTab('categories')">
+            <i class="icon">📁</i>
+            Report Categories
+        </button>
+        <button class="tab-button" 
+                [class.active]="activeTab === 'reports'" 
+                (click)="setActiveTab('reports')">
+            <i class="icon">📄</i>
+            Reports
+        </button>
+        <button class="tab-button" 
+                [class.active]="activeTab === 'user-reports'" 
+                (click)="setActiveTab('user-reports')">
+            <i class="icon">👥</i>
+            User Reports
+        </button>
+    </div>
+
+    <div class="tab-content">
+        <!-- Report Categories Tab -->
+        <div class="tab-pane" [class.active]="activeTab === 'categories'">
+            <div class="grid-container">
+                <!-- Add New Category Card -->
+                <div class="card add-category-card">
+                    <h3>Add New Category</h3>
+                    <form (ngSubmit)="addCategory()" #categoryForm="ngForm">
+                        <div class="form-group">
+                            <label for="categoryName">Category Name</label>
+                            <input type="text" 
+                                   id="categoryName" 
+                                   [(ngModel)]="newCategory.name" 
+                                   name="categoryName" 
+                                   required 
+                                   placeholder="Enter category name">
+                        </div>
+                        <div class="form-group">
+                            <label for="categoryDescription">Description</label>
+                            <textarea id="categoryDescription" 
+                                      [(ngModel)]="newCategory.description" 
+                                      name="categoryDescription" 
+                                      placeholder="Enter category description"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="categoryColor">Color</label>
+                            <input type="color" 
+                                   id="categoryColor" 
+                                   [(ngModel)]="newCategory.color" 
+                                   name="categoryColor">
+                        </div>
+                        <button type="submit" 
+                                class="btn btn-primary" 
+                                [disabled]="!categoryForm.valid || isAddingCategory">
+                            <span *ngIf="!isAddingCategory">Add Category</span>
+                            <span *ngIf="isAddingCategory">Adding...</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Existing Categories Grid -->
+                <div class="categories-grid">
+                    <div class="category-item" *ngFor="let category of categories">
+                        <div class="category-color" [style.background-color]="category.color"></div>
+                        <div class="category-details">
+                            <h4>{{category.name}}</h4>
+                            <p>{{category.description || 'No description'}}</p>
+                            <span class="report-count">{{category.reportCount || 0}} reports</span>
+                        </div>
+                        <div class="category-actions">
+                            <button class="btn btn-sm btn-secondary" (click)="editCategory(category)">
+                                <i class="icon">✏️</i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-danger" (click)="deleteCategory(category.id)">
+                                <i class="icon">🗑️</i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div class="tab-pane" [class.active]="activeTab === 'reports'">
+            <div class="grid-container">
+                <!-- Upload Report Card -->
+                <div class="card upload-card">
+                    <h3>Upload New Report</h3>
+                    <div class="upload-area" 
+                         (dragover)="onDragOver($event)" 
+                         (dragleave)="onDragLeave($event)" 
+                         (drop)="onDrop($event)">
+                        <p>📁 Drag and drop your .rpt file here or click to browse</p>
+                        <input type="file" 
+                               #fileInput 
+                               class="file-input" 
+                               accept=".rpt" 
+                               (change)="onFileSelected($event)" 
+                               [disabled]="isGenerating">
+                        <button class="upload-btn" 
+                                (click)="fileInput.click()" 
+                                [disabled]="isGenerating">
+                            Choose File
+                        </button>
+                    </div>
+                    
+                    <div class="file-info" *ngIf="fileName">
+                        <p><strong>Selected file:</strong> <span>{{fileName}}</span></p>
+                        <div class="form-group">
+                            <label for="reportCategory">Select Category</label>
+                            <select id="reportCategory" 
+                                    [(ngModel)]="selectedCategoryId" 
+                                    required>
+                                <option value="">Select a category</option>
+                                <option *ngFor="let category of categories" [value]="category.id">
+                                    {{category.name}}
+                                </option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" 
+                                (click)="uploadReport()" 
+                                [disabled]="isGenerating || !selectedCategoryId">
+                            <span *ngIf="!isGenerating">Upload Report</span>
+                            <span *ngIf="isGenerating">🔄 Uploading...</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="progress-container" *ngIf="isGenerating">
+                        <div class="progress-bar">
+                            <div class="progress-fill" [style.width.%]="progress"></div>
+                        </div>
+                        <p class="progress-text">{{progress}}%</p>
+                    </div>
+                </div>
+
+                <!-- Reports Library -->
+                <div class="card reports-library">
+                    <div class="library-header">
+                        <h3>Reports Library</h3>
+                        <div class="filters">
+                            <select [(ngModel)]="selectedFilterCategory" (change)="filterReports()">
+                                <option value="">All Categories</option>
+                                <option *ngFor="let category of categories" [value]="category.id">
+                                    {{category.name}}
+                                </option>
+                            </select>
+                            <input type="text" 
+                                   [(ngModel)]="searchTerm" 
+                                   (input)="filterReports()" 
+                                   placeholder="Search reports...">
+                        </div>
+                    </div>
+                    
+                    <div class="scrollable-content">
+                        <div class="reports-grid">
+                            <div class="report-item" *ngFor="let report of filteredReports">
+                                <div class="report-icon">📄</div>
+                                <div class="report-info">
+                                    <h4>{{report.fileName}}</h4>
+                                    <p>Category: {{report.categoryName}}</p>
+                                    <p>Uploaded: {{report.createdAt | date:'short'}}</p>
+                                    <p>By: {{report.createdBy}}</p>
+                                </div>
+                                <div class="report-actions">
+                                    <button class="btn btn-sm btn-primary" (click)="viewReport(report)">
+                                        <i class="icon">👁️</i> View
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" (click)="deleteReport(report.id)">
+                                        <i class="icon">🗑️</i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+       <!-- User Reports Tab -->
+<div class="tab-pane" [class.active]="activeTab === 'user-reports'">
+    <div class="user-reports-horizontal-layout">
+        <!-- First Section - Assign Reports -->
+        <div class="horizontal-section assign-reports-section">
+            <div class="card assign-reports-card">
+                <div class="card-header-with-button">
+                    <h3>Assign Reports to Users</h3>
+                    <form (ngSubmit)="assignReports()" #assignForm="ngForm">
+                        <button type="submit" 
+                                class="btn btn-primary assign-btn" 
+                                [disabled]="selectedUserIds.length === 0 || selectedReportIds.length === 0 || isAssigning">
+                            <span *ngIf="!isAssigning">Assign Reports</span>
+                            <span *ngIf="isAssigning">Assigning...</span>
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- User and Report Selection in horizontal layout -->
+                <div class="assignment-horizontal-container">
+                    <!-- User Selection Section -->
+                    <div class="assignment-subsection">
+                        <div class="search-section">
+                            <h4>Select Users</h4>
+                            <div class="search-input-container">
+                                <input type="text" 
+                                    [(ngModel)]="userSearchTerm" 
+                                    (input)="filterUsersForAssignment()"
+                                    placeholder="Search users by name or email..."
+                                    class="search-input"
+                                    name="userSearchTerm">
+                                <i class="search-icon">🔍</i>
+                            </div>
+                            
+                            <div class="horizontal-scrollable-list">
+                                <div class="user-list-horizontal">
+                                    <div *ngFor="let user of getDisplayedUsers()" class="user-item-horizontal">
+                                        <input type="checkbox" 
+                                            [id]="'user-' + user.id"
+                                            [value]="user.id" 
+                                            (change)="onUserSelection($event, user.id)">
+                                        <label [for]="'user-' + user.id" class="user-label-horizontal">
+                                            <span class="user-name">{{user.userName}}</span>
+                                            <span class="user-email">({{user.email}})</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Report Selection Section -->
+                    <div class="assignment-subsection">
+                        <div class="search-section">
+                            <h4>Select Reports</h4>
+                            <div class="search-input-container">
+                                <input type="text" 
+                                    [(ngModel)]="reportSearchTerm" 
+                                    (input)="filterReportsForAssignment()"
+                                    placeholder="Search reports by name or category..."
+                                    class="search-input"
+                                    name="reportSearchTerm">
+                                <i class="search-icon">🔍</i>
+                            </div>
+                            
+                            <div class="horizontal-scrollable-list">
+                                <div class="report-list-horizontal">
+                                    <div *ngFor="let report of getDisplayedReportsForAssignment()" class="report-item-assignment-horizontal">
+                                        <input type="checkbox" 
+                                            [id]="'report-' + report.id"
+                                            [value]="report.id" 
+                                            (change)="onReportSelection($event, report.id)">
+                                        <label [for]="'report-' + report.id" class="report-label-horizontal">
+                                            <span class="report-name">{{report.fileName}}</span>
+                                            <span class="report-category">({{report.categoryName}})</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Second Section - User Overview -->
+        <div class="horizontal-section user-overview-section">
+            <div class="card user-overview">
+                <div class="section-header">
+                    <h3>Users Overview</h3>
+                    <div class="search-input-container">
+                        <input type="text" 
+                            [(ngModel)]="userOverviewSearchTerm" 
+                            (input)="filterUsersWithReports()"
+                            placeholder="Search users..."
+                            class="search-input small">
+                        <i class="search-icon">🔍</i>
+                    </div>
+                </div>
+                
+                <div class="horizontal-scrollable-content">
+                    <div class="users-grid-horizontal">
+                        <div class="user-card-horizontal" *ngFor="let user of getDisplayedUsersWithReports()">
+                            <div class="user-info-horizontal">
+                                <div class="user-avatar-horizontal">{{user.userName.charAt(0).toUpperCase()}}</div>
+                                <div class="user-details-horizontal">
+                                    <h4>{{user.userName}}</h4>
+                                    <p>{{user.reportCount}} reports assigned</p>
+                                </div>
+                            </div>
+                            <div class="user-actions-horizontal">
+                                <button class="btn btn-sm btn-secondary" (click)="viewUserReports(user.id)">
+                                    <i class="icon">📄</i> View Reports
+                                </button>
+                                <button class="btn btn-sm btn-primary" (click)="assignMoreReports(user.id)">
+                                    <i class="icon">➕</i> Assign More
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Third Section - Assignment Table -->
+        <div class="horizontal-section assignments-section">
+            <div class="card assignments-table">
+                <div class="section-header">
+                    <h3>Report Assignments</h3>
+                    <div class="search-input-container">
+                        <input type="text" 
+                            [(ngModel)]="assignmentSearchTerm" 
+                            (input)="filterUserReportAssignments()"
+                            placeholder="Search assignments..."
+                            class="search-input small">
+                        <i class="search-icon">🔍</i>
+                    </div>
+                </div>
+                
+                <div class="horizontal-scrollable-content">
+                    <div class="table-container">
+                        <table class="assignments-table-content">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Report</th>
+                                    <th>Category</th>
+                                    <th>Assigned Date</th>
+                                    <th>Assigned By</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let assignment of getDisplayedAssignments()">
+                                    <td>{{assignment.userName}}</td>
+                                    <td>{{assignment.reportFileName}}</td>
+                                    <td>{{assignment.categoryName}}</td>
+                                    <td>{{assignment.assignedAt | date:'short'}}</td>
+                                    <td>{{assignment.assignedBy}}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger" 
+                                                (click)="removeAssignment(assignment.id)">
+                                            <i class="icon">🗑️</i> Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+    </div>
+</div>

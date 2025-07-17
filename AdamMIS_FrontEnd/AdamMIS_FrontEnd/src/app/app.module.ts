@@ -9,12 +9,23 @@ import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { FormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
 import { CustomeInterceptor } from './services/custome.interceptor';
+import { NavigationComponent } from './navigation/navigation.component';
+import { DmsReportComponent } from './pages/dms-report/dms-report.component';
+import { ReportManagementComponent } from './pages/dms-report/report-management/report-management.component';
+import { ReportViewingComponent } from './pages/dms-report/report-viewing/report-viewing.component';
+
+
 @NgModule({
   declarations: [
     AppComponent,
     LoginComponent,
+    DmsReportComponent,
     LayoutComponent,
-    DashboardComponent
+    DashboardComponent,
+    NavigationComponent,
+    ReportManagementComponent,
+    ReportViewingComponent,
+    
   ],
   imports: [
     BrowserModule,
@@ -27,7 +38,7 @@ import { CustomeInterceptor } from './services/custome.interceptor';
     {
       provide: HTTP_INTERCEPTORS,
       useClass:CustomeInterceptor,
-      multi:true
+      multi:true 
     }
   ],
   bootstrap: [AppComponent]

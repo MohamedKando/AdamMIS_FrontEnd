@@ -10,6 +10,7 @@ export class DashboardComponent {
 
   users: any[]=[];
   constructor(private http: HttpClient){
+    
     this.loadUsers();
   }
 

@@ -1,0 +1,677 @@
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { ReportService, RCategoryResponse, ReportResponse, UserReportResponse, User, UploadProgress } from '../../../services/report.service';
+
+// Interfaces for type safety
+interface Category {
+  id: number;
+  name: string;
+  description: string;
+  color: string;
+  reportCount?: number;
+}
+
+interface Report {
+  id: number;
+  fileName: string;
+  filePath: string;
+  categoryId: number;
+  categoryName: string;
+  createdAt: Date;
+  createdBy: string;
+  isActive: boolean;
+}
+
+interface UserWithReports {
+  id: string;
+  userName: string;
+  reportCount: number;
+}
+
+interface UserReportAssignment {
+  id: number;
+  userId: string;
+  userName: string;
+  reportId: number;
+  reportFileName: string;
+  categoryName: string;
+  assignedAt: Date;
+  assignedBy: string;
+  isActive: boolean;
+}
+
+@Component({
+  selector: 'app-report-management',
+  templateUrl: './report-management.component.html',
+  styleUrls: ['./report-management.component.css']
+})
+export class ReportManagementComponent implements OnInit {
+  // Tab management
+  activeTab: string = 'categories';
+ private readonly DISPLAY_LIMIT = 10; // You can change this to 15 if preferred
+
+  // ... existing constructor and methods ...
+
+  // New methods for displaying limited items in horizontal layout
+
+  getDisplayedUsers(): User[] {
+    return this.filteredUsers.slice(0, this.DISPLAY_LIMIT);
+  }
+
+  getDisplayedReportsForAssignment(): Report[] {
+    return this.filteredReportsForAssignment.slice(0, this.DISPLAY_LIMIT);
+  }
+
+  getDisplayedUsersWithReports(): UserWithReports[] {
+    return this.filteredUsersWithReports.slice(0, this.DISPLAY_LIMIT);
+  }
+
+  getDisplayedAssignments(): UserReportAssignment[] {
+    return this.filteredUserReportAssignments.slice(0, this.DISPLAY_LIMIT);
+  }
+  // Category management
+  categories: Category[] = [];
+  newCategory: Category = {
+    id: 0,
+    name: '',
+    description: '',
+    color: '#3498db'
+  };
+  isAddingCategory: boolean = false;
+  
+  // Frontend storage for category extra data (color & description)
+  private categoryExtraData: Map<number, {color: string, description: string}> = new Map();
+
+  // Report management
+  reports: Report[] = [];
+  filteredReports: Report[] = [];
+  selectedFile: File | null = null;
+  fileName: string = '';
+  selectedCategoryId: number | null = null;
+  selectedFilterCategory: string = '';
+  searchTerm: string = '';
+  isGenerating: boolean = false;
+  progress: number = 0;
+  uploadMessage: string = '';
+
+  // User management
+  users: User[] = [];
+  usersWithReports: UserWithReports[] = [];
+  userReportAssignments: UserReportAssignment[] = [];
+  selectedUserIds: string[] = [];
+  selectedReportIds: number[] = [];
+  isAssigning: boolean = false;
+  
+  // Search functionality for user/report assignment
+  userSearchTerm: string = '';
+  reportSearchTerm: string = '';
+  filteredUsers: User[] = [];
+  filteredReportsForAssignment: Report[] = [];
+  
+  // NEW: Search functionality for different sections
+  userOverviewSearchTerm: string = '';
+  filteredUsersWithReports: UserWithReports[] = [];
+  assignmentSearchTerm: string = '';
+  filteredUserReportAssignments: UserReportAssignment[] = [];
+
+  // Loading states
+  isLoadingCategories: boolean = false;
+  isLoadingReports: boolean = false;
+  isLoadingUsers: boolean = false;
+  isLoadingAssignments: boolean = false;
+
+  constructor(
+    private router: Router,
+    private reportService: ReportService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadInitialData();
+  }
+
+  // Tab Management
+  setActiveTab(tab: string): void {
+    this.activeTab = tab;
+    
+    // Load data based on active tab
+    switch (tab) {
+      case 'categories':
+        this.loadCategories();
+        break;
+      case 'reports':
+        this.loadReports();
+        break;
+      case 'user-reports':
+        this.loadUsers();
+        this.loadUserReportAssignments();
+        break;
+    }
+  }
+
+  // Initial Data Loading
+  private async loadInitialData(): Promise<void> {
+    try {
+      await Promise.all([
+        this.loadCategories(),
+        this.loadReports(),
+        this.loadUsers(),
+        this.loadUserReportAssignments()
+      ]);
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      alert('Error loading initial data. Please refresh the page.');
+    }
+  }
+
+  // Category Management Methods
+  private async loadCategories(): Promise<void> {
+    if (this.isLoadingCategories) return;
+    
+    this.isLoadingCategories = true;
+    try {
+      const response = await this.reportService.getAllCategories().toPromise();
+      this.categories = (response || []).map(cat => ({
+        ...cat,
+        // Add default color and description if not in extra data
+        color: this.categoryExtraData.get(cat.id)?.color || '#3498db',
+        description: this.categoryExtraData.get(cat.id)?.description || ''
+      }));
+      
+      // Load extra data from localStorage if available
+      this.loadCategoryExtraDataFromStorage();
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      alert('Error loading categories. Please try again.');
+      this.categories = [];
+    } finally {
+      this.isLoadingCategories = false;
+    }
+  }
+
+  private loadCategoryExtraDataFromStorage(): void {
+    const savedData = localStorage.getItem('categoryExtraData');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        this.categoryExtraData = new Map(parsedData);
+        
+        // Update categories with saved data
+        this.categories = this.categories.map(cat => ({
+          ...cat,
+          color: this.categoryExtraData.get(cat.id)?.color || cat.color || '#3498db',
+          description: this.categoryExtraData.get(cat.id)?.description || cat.description || ''
+        }));
+      } catch (error) {
+        console.error('Error loading category extra data:', error);
+      }
+    }
+  }
+
+  private saveCategoryExtraDataToStorage(): void {
+    try {
+      const dataToSave = Array.from(this.categoryExtraData.entries());
+      localStorage.setItem('categoryExtraData', JSON.stringify(dataToSave));
+    } catch (error) {
+      console.error('Error saving category extra data:', error);
+    }
+  }
+
+  async addCategory(): Promise<void> {
+    if (!this.newCategory.name.trim()) {
+      alert('Please enter a category name');
+      return;
+    }
+
+    this.isAddingCategory = true;
+    try {
+      const categoryRequest = {
+        name: this.newCategory.name,
+        description: this.newCategory.description,
+        color: this.newCategory.color
+      };
+      
+      const response = await this.reportService.createCategory(categoryRequest).toPromise();
+      if (response) {
+        // Save extra data (color & description) to frontend storage
+        this.categoryExtraData.set(response.id, {
+          color: this.newCategory.color,
+          description: this.newCategory.description
+        });
+        this.saveCategoryExtraDataToStorage();
+        
+        await this.loadCategories(); // Reload categories to get updated list
+        this.resetCategoryForm();
+        alert('Category added successfully!');
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+      alert('Error adding category. Please try again.');
+    } finally {
+      this.isAddingCategory = false;
+    }
+  }
+
+  editCategory(category: Category): void {
+    // Allow editing of color and description
+    const newColor = prompt('Enter new color (hex format):', category.color);
+    const newDescription = prompt('Enter new description:', category.description);
+    
+    if (newColor !== null && newDescription !== null) {
+      // Update in frontend storage
+      this.categoryExtraData.set(category.id, {
+        color: newColor || category.color,
+        description: newDescription || category.description
+      });
+      this.saveCategoryExtraDataToStorage();
+      
+      // Update in current categories array
+      const categoryIndex = this.categories.findIndex(c => c.id === category.id);
+      if (categoryIndex !== -1) {
+        this.categories[categoryIndex] = {
+          ...this.categories[categoryIndex],
+          color: newColor || category.color,
+          description: newDescription || category.description
+        };
+      }
+      
+      alert('Category updated successfully!');
+    }
+  }
+
+  async deleteCategory(categoryId: number): Promise<void> {
+    if (!confirm('Are you sure you want to delete this category?')) {
+      return;
+    }
+
+    try {
+      const success = await this.reportService.deleteCategory(categoryId).toPromise();
+      if (success) {
+        // Remove from frontend storage
+        this.categoryExtraData.delete(categoryId);
+        this.saveCategoryExtraDataToStorage();
+        
+        await this.loadCategories(); // Reload categories
+        alert('Category deleted successfully!');
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      alert('Error deleting category. Please try again.');
+    }
+  }
+
+  private resetCategoryForm(): void {
+    this.newCategory = {
+      id: 0,
+      name: '',
+      description: '',
+      color: '#3498db'
+    };
+  }
+
+  // Report Management Methods
+  private async loadReports(): Promise<void> {
+    if (this.isLoadingReports) return;
+    
+    this.isLoadingReports = true;
+    try {
+      const response = await this.reportService.getAllReports().toPromise();
+      this.reports = response || [];
+      this.filteredReports = [...this.reports];
+      this.filteredReportsForAssignment = [...this.reports]; // Initialize filtered reports for assignment
+    } catch (error) {
+      console.error('Error loading reports:', error);
+      alert('Error loading reports. Please try again.');
+      this.reports = [];
+      this.filteredReports = [];
+      this.filteredReportsForAssignment = [];
+    } finally {
+      this.isLoadingReports = false;
+    }
+  }
+
+  // File Upload Methods
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const uploadArea = event.currentTarget as HTMLElement;
+    uploadArea.classList.add('drag-over');
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const uploadArea = event.currentTarget as HTMLElement;
+    uploadArea.classList.remove('drag-over');
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const uploadArea = event.currentTarget as HTMLElement;
+    uploadArea.classList.remove('drag-over');
+    
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      this.handleFileSelection(files[0]);
+    }
+  }
+
+  onFileSelected(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+      this.handleFileSelection(target.files[0]);
+    }
+  }
+
+  private handleFileSelection(file: File): void {
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.rpt')) {
+      alert('Please select a valid .rpt file');
+      return;
+    }
+
+    // Validate file size (e.g., max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    this.selectedFile = file;
+    this.fileName = file.name;
+  }
+
+  async uploadReport(): Promise<void> {
+    if (!this.selectedFile || !this.selectedCategoryId) {
+      alert('Please select a file and category');
+      return;
+    }
+
+    this.isGenerating = true;
+    this.progress = 0;
+    this.uploadMessage = '';
+
+    try {
+      this.reportService.uploadReport(this.selectedFile, this.selectedCategoryId).subscribe({
+        next: (progressData: UploadProgress) => {
+          this.progress = progressData.progress;
+          this.uploadMessage = progressData.message || '';
+          
+          if (progressData.status === 'completed') {
+            // Reload reports to show the new upload
+            this.loadReports();
+            this.resetUploadForm();
+            alert('Report uploaded successfully!');
+          }
+        },
+        error: (error: any) => {
+          console.error('Error uploading report:', error);
+          alert('Error uploading report. Please try again.');
+          this.resetUploadForm();
+        },
+        complete: () => {
+          setTimeout(() => {
+            this.isGenerating = false;
+            this.progress = 0;
+            this.uploadMessage = '';
+          }, 1000);
+        }
+      });
+    } catch (error) {
+      console.error('Error uploading report:', error);
+      alert('Error uploading report. Please try again.');
+      this.isGenerating = false;
+      this.progress = 0;
+      this.uploadMessage = '';
+    }
+  }
+
+  private resetUploadForm(): void {
+    this.selectedFile = null;
+    this.fileName = '';
+    this.selectedCategoryId = null;
+  }
+
+  // Report Filtering
+  filterReports(): void {
+    this.filteredReports = this.reports.filter(report => {
+      const matchesCategory = !this.selectedFilterCategory || 
+        report.categoryId.toString() === this.selectedFilterCategory;
+      const matchesSearch = !this.searchTerm || 
+        report.fileName.toLowerCase().includes(this.searchTerm.toLowerCase());
+      
+      return matchesCategory && matchesSearch;
+    });
+  }
+
+  // User Search for Assignment
+  filterUsersForAssignment(): void {
+    this.filteredUsers = this.users.filter(user => {
+      const matchesSearch = !this.userSearchTerm || 
+        user.userName.toLowerCase().includes(this.userSearchTerm.toLowerCase()) ||
+        (user.email && user.email.toLowerCase().includes(this.userSearchTerm.toLowerCase()));
+      
+      return matchesSearch;
+    });
+  }
+
+  // Report Search for Assignment
+  filterReportsForAssignment(): void {
+    this.filteredReportsForAssignment = this.reports.filter(report => {
+      const matchesSearch = !this.reportSearchTerm || 
+        report.fileName.toLowerCase().includes(this.reportSearchTerm.toLowerCase()) ||
+        report.categoryName.toLowerCase().includes(this.reportSearchTerm.toLowerCase());
+      
+      return matchesSearch;
+    });
+  }
+
+  // NEW: User Overview Search
+  filterUsersWithReports(): void {
+    this.filteredUsersWithReports = this.usersWithReports.filter(user => {
+      const matchesSearch = !this.userOverviewSearchTerm || 
+        user.userName.toLowerCase().includes(this.userOverviewSearchTerm.toLowerCase());
+      
+      return matchesSearch;
+    });
+  }
+
+  // NEW: Assignment Search
+  filterUserReportAssignments(): void {
+    this.filteredUserReportAssignments = this.userReportAssignments.filter(assignment => {
+      const matchesSearch = !this.assignmentSearchTerm || 
+        assignment.userName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase()) ||
+        assignment.reportFileName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase()) ||
+        assignment.categoryName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase());
+      
+      return matchesSearch;
+    });
+  }
+
+  viewReport(report: Report): void {
+    // TODO: Implement report viewing
+    console.log('View report:', report);
+    alert('Report viewing functionality will be implemented in next phase');
+  }
+
+  async deleteReport(reportId: number): Promise<void> {
+    if (!confirm('Are you sure you want to delete this report?')) {
+      return;
+    }
+
+    try {
+      const success = await this.reportService.deleteReport(reportId).toPromise();
+      if (success) {
+        await this.loadReports(); // Reload reports
+        alert('Report deleted successfully!');
+      }
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      alert('Error deleting report. Please try again.');
+    }
+  }
+
+  // User Management Methods
+  private async loadUsers(): Promise<void> {
+    if (this.isLoadingUsers) return;
+    
+    this.isLoadingUsers = true;
+    try {
+      const response = await this.reportService.getAllUsers().toPromise();
+      this.users = response || [];
+      this.filteredUsers = [...this.users]; // Initialize filtered users
+      this.updateUsersWithReports();
+    } catch (error) {
+      console.error('Error loading users:', error);
+      alert('Error loading users. Please try again.');
+      this.users = [];
+      this.filteredUsers = [];
+    } finally {
+      this.isLoadingUsers = false;
+    }
+  }
+
+  private updateUsersWithReports(): void {
+    this.usersWithReports = this.users.map(user => ({
+      id: user.id,
+      userName: user.userName,
+      reportCount: this.userReportAssignments.filter(assignment => assignment.userId === user.id && assignment.isActive).length
+    }));
+    
+    // Initialize filtered users with reports
+    this.filteredUsersWithReports = [...this.usersWithReports];
+  }
+
+  private async loadUserReportAssignments(): Promise<void> {
+    if (this.isLoadingAssignments) return;
+    
+    this.isLoadingAssignments = true;
+    try {
+      // Load assignments for all users
+      const allAssignments: UserReportAssignment[] = [];
+      
+      for (const user of this.users) {
+        const userReports = await this.reportService.getUserReports(user.id).toPromise();
+        if (userReports) {
+          allAssignments.push(...userReports);
+        }
+      }
+      
+      this.userReportAssignments = allAssignments;
+      this.filteredUserReportAssignments = [...this.userReportAssignments]; // Initialize filtered assignments
+      this.updateUsersWithReports();
+    } catch (error) {
+      console.error('Error loading user report assignments:', error);
+      alert('Error loading user report assignments. Please try again.');
+      this.userReportAssignments = [];
+      this.filteredUserReportAssignments = [];
+    } finally {
+      this.isLoadingAssignments = false;
+    }
+  }
+
+  // User Report Assignment Methods
+  onUserSelection(event: Event, userId: string): void {
+    const target = event.target as HTMLInputElement;
+    if (target.checked) {
+      this.selectedUserIds.push(userId);
+    } else {
+      this.selectedUserIds = this.selectedUserIds.filter(id => id !== userId);
+    }
+  }
+
+  onReportSelection(event: Event, reportId: number): void {
+    const target = event.target as HTMLInputElement;
+    if (target.checked) {
+      this.selectedReportIds.push(reportId);
+    } else {
+      this.selectedReportIds = this.selectedReportIds.filter(id => id !== reportId);
+    }
+  }
+
+  async assignReports(): Promise<void> {
+    if (this.selectedUserIds.length === 0 || this.selectedReportIds.length === 0) {
+      alert('Please select at least one user and one report');
+      return;
+    }
+
+    this.isAssigning = true;
+    try {
+      const request = {
+        userIds: this.selectedUserIds,
+        reportIds: this.selectedReportIds
+      };
+      
+      const response = await this.reportService.assignReportsToUsers(request).toPromise();
+      if (response) {
+        await this.loadUserReportAssignments(); // Reload assignments
+        this.resetAssignmentForm();
+        alert('Reports assigned successfully!');
+      }
+    } catch (error) {
+      console.error('Error assigning reports:', error);
+      alert('Error assigning reports. Please try again.');
+    } finally {
+      this.isAssigning = false;
+    }
+  }
+
+  private resetAssignmentForm(): void {
+    this.selectedUserIds = [];
+    this.selectedReportIds = [];
+    this.userSearchTerm = '';
+    this.reportSearchTerm = '';
+    this.filteredUsers = [...this.users];
+    this.filteredReportsForAssignment = [...this.reports];
+    
+    // Clear checkboxes
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+      (checkbox as HTMLInputElement).checked = false;
+    });
+  }
+
+  viewUserReports(userId: string): void {
+    // TODO: Implement user reports viewing
+    console.log('View user reports for:', userId);
+    alert('User reports viewing functionality will be implemented in next phase');
+  }
+
+  assignMoreReports(userId: string): void {
+    // TODO: Implement assign more reports
+    console.log('Assign more reports to:', userId);
+    alert('Assign more reports functionality will be implemented in next phase');
+  }
+
+  async removeAssignment(assignmentId: number): Promise<void> {
+    if (!confirm('Are you sure you want to remove this assignment?')) {
+      return;
+    }
+
+    try {
+      const success = await this.reportService.removeUserReportAssignment(assignmentId).toPromise();
+      if (success) {
+        await this.loadUserReportAssignments(); // Reload assignments
+        alert('Assignment removed successfully!');
+      }
+    } catch (error) {
+      console.error('Error removing assignment:', error);
+      alert('Error removing assignment. Please try again.');
+    }
+  }
+
+  // Utility Methods
+  async refreshData(): Promise<void> {
+    await this.loadInitialData();
+  }
+
+  async testApiConnection(): Promise<void> {
+    try {
+      await this.reportService.testConnection().toPromise();
+      alert('API connection successful!');
+    } catch (error) {
+      console.error('API connection failed:', error);
+      alert('API connection failed. Please check your connection and try again.');
+    }
+  }
+}

@@ -1,0 +1,18 @@
+<nav class="left-nav">
+  <div class="nav-header">
+    <h3>AdamMIS</h3>
+  </div>
+  
+  <ul class="nav-menu">
+    <li *ngFor="let item of menuItems" class="nav-item">
+      <a (click)="navigateTo(item.route)" class="nav-link">
+        <i class="icon {{item.icon}}"></i>
+        <span>{{item.label}}</span>
+      </a>
+      <a routerLink="/dms-report" routerLinkActive="active">
+        <i class="icon-class"></i>
+        DMS Report
+      </a>
+    </li>
+  </ul>
+</nav>
