@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ReportService, UserReportResponse, UploadProgress } from '../../../services/report.service';
+import { ReportService, UserReportResponse, UploadProgress, RCategoryResponse } from '../../../services/report.service';
 import { AuthService } from '../../../services/auth.service';
 
 // Add this interface if it's not imported from the service
@@ -9,16 +9,33 @@ interface GenerateReportResponse {
   generatedAt: string;
 }
 
+// Extended interface to include pinned status
+interface ExtendedUserReportResponse extends UserReportResponse {
+  isPinned?: boolean;
+}
+
 @Component({
   selector: 'app-report-viewing',
   templateUrl: './report-viewing.component.html',
   styleUrls: ['./report-viewing.component.css']
 })
 export class ReportViewingComponent implements OnInit {
-  reports: UserReportResponse[] = [];
+  // Data properties
+  reports: ExtendedUserReportResponse[] = [];
+  filteredReports: ExtendedUserReportResponse[] = [];
+  categories: RCategoryResponse[] = [];
+  pinnedReportIds: Set<number> = new Set(); // Store pinned report IDs
+  
+  // State properties
   loading: boolean = false;
   error: string = '';
   currentUserId: string = '';
+  
+  // UI properties
+  searchTerm: string = '';
+  currentView: 'table' | 'grid' = 'table';
+  activeFilter: string = 'all';
+  showUploadSection: boolean = false;
   
   // Properties for report generation
   generatingReportId: number | null = null;
@@ -33,6 +50,8 @@ export class ReportViewingComponent implements OnInit {
 
   ngOnInit(): void {
     this.getCurrentUser();
+    this.loadCategories();
+    this.loadPinnedReports();
   }
 
   getCurrentUser(): void {
@@ -46,6 +65,33 @@ export class ReportViewingComponent implements OnInit {
     }
   }
 
+  loadCategories(): void {
+    this.reportService.getAllCategories().subscribe({
+      next: (categories: RCategoryResponse[]) => {
+        this.categories = categories;
+      },
+      error: (error: any) => {
+        console.error('Error loading categories:', error);
+      }
+    });
+  }
+
+  // Load pinned reports from localStorage or backend
+  loadPinnedReports(): void {
+    const pinnedReports = localStorage.getItem(`pinnedReports_${this.currentUserId}`);
+    if (pinnedReports) {
+      this.pinnedReportIds = new Set(JSON.parse(pinnedReports));
+    }
+  }
+
+  // Save pinned reports to localStorage
+  savePinnedReports(): void {
+    localStorage.setItem(
+      `pinnedReports_${this.currentUserId}`, 
+      JSON.stringify([...this.pinnedReportIds])
+    );
+  }
+
   loadReports(): void {
     if (!this.currentUserId) {
       this.error = 'User ID not found';
@@ -57,8 +103,14 @@ export class ReportViewingComponent implements OnInit {
 
     this.reportService.getUserReports(this.currentUserId).subscribe({
       next: (data: UserReportResponse[]) => {
-        this.reports = data;
+        // Add pinned status to each report
+        this.reports = data.map(report => ({
+          ...report,
+          isPinned: this.pinnedReportIds.has(report.reportId)
+        }));
+        this.filteredReports = [...this.reports]; // Initialize filtered reports
         this.loading = false;
+        console.log('Reports loaded:', this.reports);
       },
       error: (error: any) => {
         this.error = 'Failed to load reports';
@@ -68,50 +120,158 @@ export class ReportViewingComponent implements OnInit {
     });
   }
 
-  // Fixed: Generate report by ID without file upload
-onViewReport(reportId: number): void {
-  // Show loading state
-  this.generatingReportId = reportId;
-  this.generationProgress = 0;
-  this.generationStatus = 'processing';
-  this.generationMessage = 'Initializing report generation...';
-  this.error = '';
+  // Pin functionality
+  onTogglePin(reportId: number): void {
+    const report = this.reports.find(r => r.reportId === reportId);
+    if (!report) return;
 
-  this.reportService.generateReportById(reportId).subscribe({
-    next: (response: GenerateReportResponse) => {
-      console.log('Report generated successfully:', response);
-      
-      // Update UI
-      this.generatingReportId = null;
-      this.generationProgress = 100;
-      this.generationStatus = 'completed';
-      this.generationMessage = response.message;
-      
-      // Show success message
-      alert(`Report generated successfully: ${response.fileName}\nGenerated at: ${new Date(response.generatedAt).toLocaleString()}`);
-      
-      // Clear status after 3 seconds
-      setTimeout(() => {
-        this.generationStatus = '';
-        this.generationMessage = '';
-        this.generationProgress = 0;
-      }, 3000);
-    },
-    error: (error) => {
-      console.error('Report generation failed:', error);
-      
-      // Update UI
-      this.generatingReportId = null;
-      this.generationProgress = 0;
-      this.generationStatus = 'error';
-      this.generationMessage = error.message || 'Report generation failed';
-      this.error = error.message || 'Report generation failed';
-      
-      // Show error message
-      alert(`Report generation failed: ${error.message}`);
+    // Toggle pinned status
+    if (this.pinnedReportIds.has(reportId)) {
+      this.pinnedReportIds.delete(reportId);
+      report.isPinned = false;
+    } else {
+      this.pinnedReportIds.add(reportId);
+      report.isPinned = true;
     }
-  });
-}
+
+    // Update the report in filteredReports as well
+    const filteredReport = this.filteredReports.find(r => r.reportId === reportId);
+    if (filteredReport) {
+      filteredReport.isPinned = report.isPinned;
+    }
+
+    // Save to localStorage
+    this.savePinnedReports();
+
+    // Show feedback
+    const action = report.isPinned ? 'pinned' : 'unpinned';
+    console.log(`Report ${report.reportFileName} has been ${action}`);
+    
+    // Optional: Show a toast notification
+    // this.showToast(`Report ${action} successfully`);
+  }
+
+  // Search and filter methods
+  onSearch(): void {
+    this.applyFilters();
+  }
+
+  filterReports(filter: string): void {
+    this.activeFilter = filter;
+    this.applyFilters();
+  }
+
+  private applyFilters(): void {
+    let filtered = [...this.reports];
+
+    // Apply search filter
+    if (this.searchTerm.trim()) {
+      const search = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(report => 
+        report.reportFileName.toLowerCase().includes(search) ||
+        report.categoryName.toLowerCase().includes(search) ||
+        report.assignedBy.toLowerCase().includes(search)
+      );
+    }
+
+    // Apply category filter
+    if (this.activeFilter !== 'all') {
+      if (this.activeFilter === 'pinned') {
+        filtered = filtered.filter(report => report.isPinned);
+      } else {
+        filtered = filtered.filter(report => 
+          report.categoryName.toLowerCase() === this.activeFilter
+        );
+      }
+    }
+
+    this.filteredReports = filtered;
+  }
+
+  // View toggle
+  toggleView(view: 'table' | 'grid'): void {
+    this.currentView = view;
+  }
+
+  // Statistics methods
+  getTotalReports(): number {
+    return this.reports.length;
+  }
+
+  getPinnedReports(): number {
+    return this.reports.filter(report => report.isPinned).length;
+  }
+
+  getUniqueCategories(): number {
+    const uniqueCategories = new Set(this.reports.map(report => report.categoryName));
+    return uniqueCategories.size;
+  }
+
+  getUniqueCategory(): string[] {
+    const uniqueCategories = new Set(this.reports.map(report => report.categoryName));
+    return Array.from(uniqueCategories);
+  }
+
+  getThisWeekReports(): number {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    return this.reports.filter(report => {
+      const assignedDate = new Date(report.assignedAt);
+      return assignedDate >= oneWeekAgo;
+    }).length;
+  }
+
+  // Report generation methods
+  onViewReport(reportId: number): void {
+    console.log('Starting report generation for ID:', reportId);
+    
+    // Show loading state
+    this.generatingReportId = reportId;
+    this.generationProgress = 0;
+    this.generationStatus = 'processing';
+    this.generationMessage = 'Initializing report generation...';
+    this.error = '';
+
+    this.reportService.generateReportById(reportId).subscribe({
+      next: (response: GenerateReportResponse) => {
+        console.log('✅ Report generated successfully:', response);
+        
+        // Update UI
+        this.generatingReportId = null;
+        this.generationProgress = 100;
+        this.generationStatus = 'completed';
+        this.generationMessage = response.message;
+        
+        alert(`Report generated successfully: ${response.fileName}\nGenerated at: ${new Date(response.generatedAt).toLocaleString()}`);
+        
+        setTimeout(() => {
+          this.generationStatus = '';
+          this.generationMessage = '';
+          this.generationProgress = 0;
+        }, 3000);
+      },
+      error: (error) => {
+        console.error('❌ Report generation failed:', error);
+        console.error('Error details:', {
+          message: error.message,
+          status: error.status,
+          statusText: error.statusText,
+          error: error.error
+        });
+        
+        // Update UI
+        this.generatingReportId = null;
+        this.generationProgress = 0;
+        this.generationStatus = 'error';
+        this.generationMessage = error.message || 'Report generation failed';
+        this.error = error.message || 'Report generation failed';
+        
+        alert(`Report generation failed: ${error.message}`);
+      }
+    });
+  }
+
   // Method for file upload and report generation
   onUploadAndGenerateReport(): void {
     const fileInput = document.createElement('input');
@@ -190,28 +350,35 @@ onViewReport(reportId: number): void {
     }
   }
 
-  onDownloadReport(reportId: number): void {
-    // Handle download report action
-    console.log('Downloading report:', reportId);
-    // Implement download logic here
-    // Example: this.reportService.downloadReport(reportId).subscribe(...);
-  }
-
+  // Utility methods
   refreshReports(): void {
     this.loadReports();
   }
 
   getCategoryClass(category: string): string {
-    return `category-${category.toLowerCase()}`;
+    return `category-${category.toLowerCase().replace(/\s+/g, '-')}`;
   }
 
-  // Helper method to check if a report is currently being generated
   isGenerating(reportId: number): boolean {
     return this.generatingReportId === reportId;
   }
 
-  // Helper method to get progress for a specific report
   getGenerationProgress(reportId: number): number {
     return this.isGenerating(reportId) ? this.generationProgress : 0;
+  }
+
+  trackByReportId(index: number, report: ExtendedUserReportResponse): number {
+    return report.reportId;
+  }
+
+  formatDate(date: string | Date): string {
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 }

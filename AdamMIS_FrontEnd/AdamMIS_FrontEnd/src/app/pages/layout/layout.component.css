@@ -1,12 +1,51 @@
+/* Additional styles for the layout component */
 .app-container {
   display: flex;
   margin-top: 56px; /* Height of top navbar */
   min-height: calc(100vh - 56px);
 }
 
+/* Override main content styles */
 .main-content {
   flex: 1;
   margin-left: 250px; /* Width of left navigation */
   padding: 20px;
   background-color: #f8f9fa;
+  transition: margin-left 0.3s ease-in-out;
+}
+
+/* Collapsed navigation state */
+.main-content.nav-collapsed {
+  margin-left: 70px; /* Collapsed navigation width */
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Enhanced hover effects */
+.nav-item a {
+  transform-origin: left center;
+}
+
+.sidebar:not(.collapsed) .nav-item a:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Loading animation (optional) */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.main-content > * {
+  animation: slideIn 0.3s ease-in-out;
 }

@@ -1768,7 +1768,112 @@
 .mode-toggle-switch input[type="radio"] {
   display: none;
 }
+.report-manager-content {
+    margin-left: 20px;
+    border-left: 3px solid #007bff;
+    padding-left: 20px;
+    margin-top: 15px;
+    background-color: #f8f9fa;
+    border-radius: 0 8px 8px 0;
+    padding: 20px;
+}
 
+.section-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.section-title {
+    color: #495057;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-description {
+    color: #6c757d;
+    font-size: 14px;
+    margin: 0;
+}
+
+.sub-tabs-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.sub-tabs-header {
+    display: flex;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 15px;
+    gap: 10px;
+}
+
+.sub-tab-button {
+    padding: 10px 16px;
+    font-size: 13px;
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.sub-tab-button:hover {
+    background-color: #dee2e6;
+    transform: translateY(-1px);
+}
+
+.sub-tab-button.active {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+}
+
+.sub-tab-content {
+    padding: 20px;
+}
+
+.sub-tab-pane {
+    display: none;
+}
+
+.sub-tab-pane.active {
+    display: block;
+}
+
+/* Additional styling for better visual separation */
+.tabs-header .tab-button {
+    position: relative;
+}
+
+.tabs-header .tab-button[class*="user-reports"].active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-color: #007bff;
+}
+
+/* Make the main Report Manager tab more prominent when active */
+.tab-button[class*="user-reports"].active {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+}
 .mode-toggle-switch input[type="radio"]:checked + span,
 .mode-toggle-switch label:has(input[type="radio"]:checked) {
   background-color: #007bff;

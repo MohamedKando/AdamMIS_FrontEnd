@@ -482,38 +482,47 @@ export class ReportService {
    * Generic error handler
    */
   private handleError = (error: HttpErrorResponse) => {
-    console.error('API Error:', error);
-    let errorMessage = 'An error occurred';
-    
-    if (error.error instanceof ErrorEvent) {
-      // Client-side error
+  console.error('API Error:', error);
+  let errorMessage = 'An error occurred';
+  
+  if (error.error instanceof ErrorEvent) {
+    // Client-side error
+    errorMessage = error.error.message;
+  } else {
+    // Server-side error - safely handle different error types
+    if (error.error && typeof error.error === 'string') {
+      errorMessage = error.error;
+    } else if (error.error && error.error.message) {
       errorMessage = error.error.message;
     } else {
-      // Server-side error
-      errorMessage = error.error?.message || `Error: ${error.status}`;
-      
-      // Handle specific error cases from your C# endpoint
-      if (error.status === 404) {
-        if (error.error?.includes('Report not found')) {
-          errorMessage = 'Report not found in database';
-        } else if (error.error?.includes('Report file not found')) {
-          errorMessage = 'Report file not found on server';
-        } else if (error.error?.includes('ReportGenerator.exe not found')) {
-          errorMessage = 'Report generator application not found';
-        }
-      } else if (error.status === 400) {
-        if (error.error?.includes('Invalid report file type')) {
-          errorMessage = 'Invalid report file type. Only .rpt files are supported.';
-        }
-      } else if (error.status === 500) {
-        if (error.error?.includes('timed out')) {
-          errorMessage = 'Report generation timed out. Please try again.';
-        } else if (error.error?.includes('Report generation failed')) {
-          errorMessage = 'Report generation failed. Please check the report file.';
-        }
-      }
+      errorMessage = `Error: ${error.status} - ${error.statusText || 'Unknown error'}`;
     }
     
-    return throwError(() => new Error(errorMessage));
-  };
+    // Convert error message to string for safe includes() check
+    const errorStr = errorMessage.toString().toLowerCase();
+    
+    // Handle specific error cases from your C# endpoint
+    if (error.status === 404) {
+      if (errorStr.includes('report not found')) {
+        errorMessage = 'Report not found in database';
+      } else if (errorStr.includes('report file not found')) {
+        errorMessage = 'Report file not found on server';
+      } else if (errorStr.includes('reportgenerator.exe not found')) {
+        errorMessage = 'Report generator application not found';
+      }
+    } else if (error.status === 400) {
+      if (errorStr.includes('invalid report file type')) {
+        errorMessage = 'Invalid report file type. Only .rpt files are supported.';
+      }
+    } else if (error.status === 500) {
+      if (errorStr.includes('timed out')) {
+        errorMessage = 'Report generation timed out. Please try again.';
+      } else if (errorStr.includes('report generation failed')) {
+        errorMessage = 'Report generation failed. Please check the report file.';
+      }
+    }
+  }
+  
+  return throwError(() => new Error(errorMessage));
+};
 }

@@ -8,6 +8,9 @@ import { Router } from '@angular/router';
 })
 export class LayoutComponent {
   
+  // Add navigation collapse state
+  isNavCollapsed = false;
+  
   constructor(private router: Router) {}
 
   // Track which menu items are expanded
@@ -42,7 +45,21 @@ export class LayoutComponent {
   }
 
   toggleSubmenu(menuKey: string) {
-    this.expandedMenus[menuKey] = !this.expandedMenus[menuKey];
+    // Don't allow submenu expansion when navigation is collapsed
+    if (!this.isNavCollapsed) {
+      this.expandedMenus[menuKey] = !this.expandedMenus[menuKey];
+    }
+  }
+
+  // Add navigation toggle method
+  toggleNavigation() {
+    this.isNavCollapsed = !this.isNavCollapsed;
+    // Close all submenus when collapsing navigation
+    if (this.isNavCollapsed) {
+      Object.keys(this.expandedMenus).forEach(key => {
+        this.expandedMenus[key] = false;
+      });
+    }
   }
 
   getIcon(iconType: string): string {

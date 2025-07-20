@@ -1,17 +1,25 @@
-<nav class="left-nav">
+<nav class="left-nav" [class.collapsed]="isNavCollapsed">
+  <!-- Toggle Button -->
+  <button class="nav-toggle-btn" (click)="toggleNavigation()" [class.collapsed]="isNavCollapsed">
+    <i class="toggle-icon" [class.rotated]="isNavCollapsed">☰</i>
+  </button>
+
   <div class="nav-header">
-    <h3>AdamMIS</h3>
+    <h3 [class.hidden]="isNavCollapsed">AdamMIS</h3>
+    <h3 class="collapsed-title" [class.visible]="isNavCollapsed">A</h3>
   </div>
   
   <ul class="nav-menu">
     <li *ngFor="let item of menuItems" class="nav-item">
-      <a (click)="navigateTo(item.route)" class="nav-link">
+      <a (click)="navigateTo(item.route)" class="nav-link" [title]="item.label">
         <i class="icon {{item.icon}}"></i>
-        <span>{{item.label}}</span>
+        <span class="nav-text" [class.hidden]="isNavCollapsed">{{item.label}}</span>
       </a>
-      <a routerLink="/dms-report" routerLinkActive="active">
+    </li>
+    <li class="nav-item">
+      <a routerLink="/dms-report" routerLinkActive="active" class="nav-link" title="DMS Report">
         <i class="icon-class"></i>
-        DMS Report
+        <span class="nav-text" [class.hidden]="isNavCollapsed">DMS Report</span>
       </a>
     </li>
   </ul>

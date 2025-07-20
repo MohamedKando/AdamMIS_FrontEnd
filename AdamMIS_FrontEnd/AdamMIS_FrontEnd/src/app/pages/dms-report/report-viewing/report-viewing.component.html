@@ -1,68 +1,259 @@
-/ Updated HTML Template - Fix the button click
-<!-- Updated table section with corrected report ID -->
-<div class="table-responsive">
-  <table class="table table-hover">
-    <thead>
-      <tr>
-        <th>Report</th>
-        <th>Category</th>
-        <th>Assigned Date</th>
-        <th>Assigned By</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let report of reports">
-        <td>
-          <div class="report-info">
-            <span class="report-icon">📄</span>
-            <span>{{ report.reportFileName }}</span>
-          </div>
-        </td>
-        <td>
-          <span [class]="getCategoryClass(report.categoryName)">
-            {{ report.categoryName }}
-          </span>
-        </td>
-        <td>{{ report.assignedAt | date:'shortDate' }}</td>
-        <td>{{ report.assignedBy }}</td>
-        <td>
-          <!-- FIXED: Use report.reportId instead of report.id -->
-          <button 
-            class="btn btn-sm btn-outline-primary me-2" 
-            (click)="onViewReport(report.reportId)" 
-            [disabled]="isGenerating(report.reportId)"
-            title="Generate Report">
-            <span class="action-icon" *ngIf="!isGenerating(report.reportId)">👁</span>
-            <span class="spinner-border spinner-border-sm" role="status" *ngIf="isGenerating(report.reportId)"></span>
-          </button>
-          <button 
-            class="btn btn-sm btn-outline-secondary" 
-            (click)="onDownloadReport(report.reportId)" 
-            title="Download Report">
-            <span class="action-icon">⬇</span>
-          </button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+<!-- Main Content Container -->
+<div class="main-content">
+  <!-- Top Navigation -->
 
-<!-- Optional: Add progress indicator -->
-<div *ngIf="generatingReportId" class="alert alert-info mt-3">
-  <div class="d-flex align-items-center">
-    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-    <div class="flex-grow-1">
-      <strong>{{ generationMessage }}</strong>
-      <div class="progress mt-2" style="height: 5px;">
-        <div 
-          class="progress-bar" 
-          role="progressbar" 
-          [style.width.%]="generationProgress"
-          [attr.aria-valuenow]="generationProgress"
-          aria-valuemin="0" 
-          aria-valuemax="100">
+
+  <!-- Dashboard Container -->
+  <div class="dashboard-container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-title">Report Dashboard</h1>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>Loading reports...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error && !loading" class="error-container">
+      <div class="error-message">{{ error }}</div>
+      <button class="retry-btn" (click)="loadReports()">Retry</button>
+    </div>
+
+    <!-- Main Content (shown when not loading) -->
+    <div *ngIf="!loading">
+      <!-- Statistics Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">{{ getTotalReports() }}</div>
+          <div class="stat-label">Total Reports</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-number">{{ getPinnedReports() }}</div>
+          <div class="stat-label">Pinned Reports</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">{{ getUniqueCategories() }}</div>
+          <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">{{ getThisWeekReports() }}</div>
+          <div class="stat-label">This Week</div>
+        </div>
+      </div>
+
+      <!-- Controls Section -->
+      <div class="controls-section">
+        <div class="search-and-filters">
+          <div class="search-box">
+            <input 
+              type="text" 
+              class="search-input" 
+              placeholder="Search reports by name, category, or assigned by..." 
+              [(ngModel)]="searchTerm"
+              (input)="onSearch()"
+            >
+            <span class="search-icon">🔍</span>
+          </div>
+          <div class="view-toggle">
+            <button 
+              class="toggle-btn" 
+              [class.active]="currentView === 'table'"
+              (click)="toggleView('table')"
+            >
+              Table View
+            </button>
+            <button 
+              class="toggle-btn" 
+              [class.active]="currentView === 'grid'"
+              (click)="toggleView('grid')"
+            >
+              Grid View
+            </button>
+          </div>
+        </div>
+        
+        <div class="filter-tabs">
+          <button 
+            class="filter-tab" 
+            [class.active]="activeFilter === 'all'"
+            (click)="filterReports('all')"
+          >
+            All
+          </button>
+          <button 
+            *ngFor="let category of getUniqueCategory()" 
+            class="filter-tab" 
+            [class.active]="activeFilter === category.toLowerCase()"
+            (click)="filterReports(category.toLowerCase())"
+          >
+            {{ category }}
+          </button>
+          <button 
+            class="filter-tab" 
+            [class.active]="activeFilter === 'pinned'"
+            (click)="filterReports('pinned')"
+          >
+            Pinned Only
+          </button>
+        </div>
+      </div>
+
+      <!-- Reports Section -->
+      <div class="reports-section">
+        <div class="section-header">
+          <h3 class="section-title">Reports ({{ filteredReports.length }})</h3>
+          <button class="refresh-btn" (click)="refreshReports()">
+            <span class="refresh-icon">🔄</span>
+            Refresh
+          </button>
+        </div>
+
+        <!-- Table View -->
+        <div class="table-container" *ngIf="currentView === 'table'">
+          <table class="reports-table" *ngIf="filteredReports.length > 0">
+            <thead>
+              <tr>
+                <th>Report</th>
+                <th>Category</th>
+                <th>Assigned Date</th>
+                <th>Assigned By</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let report of filteredReports; trackBy: trackByReportId">
+                <td>
+                  <div class="report-info">
+                    <span class="report-icon">📄</span>
+                    <span class="report-name">{{ report.reportFileName }}</span>
+                    <span class="pin-indicator" *ngIf="report.isPinned">📌</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="category-badge" [ngClass]="getCategoryClass(report.categoryName)">
+                    {{ report.categoryName }}
+                  </span>
+                </td>
+                <td>{{ formatDate(report.assignedAt) }}</td>
+                <td>{{ report.assignedBy }}</td>
+                <td>
+                  <div class="actions">
+                    <button 
+                      class="action-btn view-btn" 
+                      [disabled]="isGenerating(report.reportId)"
+                      (click)="onViewReport(report.reportId)"
+                      title="Generate Report"
+                    >
+                      <span *ngIf="!isGenerating(report.reportId)">👁</span>
+                      <div *ngIf="isGenerating(report.reportId)" class="spinner"></div>
+                    </button>
+                    <button 
+                      class="action-btn pin-btn" 
+                      [class.pinned]="report.isPinned"
+                      (click)="onTogglePin(report.reportId)"
+                      [title]="report.isPinned ? 'Unpin Report' : 'Pin Report'"
+                    >
+                      <span>{{ report.isPinned ? '📌' : '📍' }}</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Empty State -->
+          <div class="empty-state" *ngIf="filteredReports.length === 0">
+            <div class="empty-icon">📄</div>
+            <div class="empty-title">No Reports Found</div>
+            <div class="empty-text">
+              <span *ngIf="activeFilter === 'all' && !searchTerm">You don't have any reports assigned yet.</span>
+              <span *ngIf="activeFilter !== 'all' || searchTerm">No reports found for the selected filter or search term.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid View -->
+        <div class="grid-container" *ngIf="currentView === 'grid'">
+          <div class="reports-grid">
+            <div 
+              *ngFor="let report of filteredReports; trackBy: trackByReportId" 
+              class="report-card"
+              [class.pinned]="report.isPinned"
+            >
+              <div class="report-card-header">
+                <span class="report-icon">📄</span>
+                <span class="pin-indicator" *ngIf="report.isPinned">📌</span>
+                <div class="report-card-actions">
+                  <button 
+                    class="action-btn view-btn small" 
+                    [disabled]="isGenerating(report.reportId)"
+                    (click)="onViewReport(report.reportId)"
+                    title="Generate Report"
+                  >
+                    <span *ngIf="!isGenerating(report.reportId)">👁</span>
+                    <div *ngIf="isGenerating(report.reportId)" class="spinner"></div>
+                  </button>
+                  <button 
+                    class="action-btn pin-btn small" 
+                    [class.pinned]="report.isPinned"
+                    (click)="onTogglePin(report.reportId)"
+                    [title]="report.isPinned ? 'Unpin Report' : 'Pin Report'"
+                  >
+                    <span>{{ report.isPinned ? '📌' : '📍' }}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="report-card-body">
+                <h4 class="report-card-title">{{ report.reportFileName }}</h4>
+                <div class="report-card-meta">
+                  <span class="category-badge small" [ngClass]="getCategoryClass(report.categoryName)">
+                    {{ report.categoryName }}
+                  </span>
+                  <span class="report-date">{{ formatDate(report.assignedAt) }}</span>
+                </div>
+                <p class="report-assigned-by">Assigned by: {{ report.assignedBy }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State for Grid -->
+          <div class="empty-state" *ngIf="filteredReports.length === 0">
+            <div class="empty-icon">📄</div>
+            <div class="empty-title">No Reports Found</div>
+            <div class="empty-text">
+              <span *ngIf="activeFilter === 'all' && !searchTerm">You don't have any reports assigned yet.</span>
+              <span *ngIf="activeFilter !== 'all' || searchTerm">No reports found for the selected filter or search term.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Section (shown during report generation) -->
+        <div 
+          class="progress-section" 
+          *ngIf="generatingReportId !== null || generationStatus"
+        >
+          <div class="progress-info">
+            <div class="progress-spinner"></div>
+            <div class="progress-text">{{ generationMessage || 'Processing report...' }}</div>
+          </div>
+          <div class="progress-bar-container">
+            <div 
+              class="progress-bar" 
+              [style.width.%]="generationProgress"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload Section (Optional) -->
+      <div class="upload-section" *ngIf="showUploadSection">
+        <button class="upload-btn" (click)="onUploadAndGenerateReport()">
+          <span>📤</span>
+          Upload & Generate Report
+        </button>
       </div>
     </div>
   </div>

@@ -8,16 +8,23 @@ import { Router } from '@angular/router';
 })
 export class NavigationComponent {
   
+  isNavCollapsed = false; // Property to track navigation state
+  
   constructor(private router: Router) {}
 
   menuItems = [
     { label: 'Dashboard', icon: 'dashboard', route: '/dashboard' },
-    { label: 'DMS Report', icon: 'report', route: '/dms-report' }, // Changed icon to 'report' as example
+    { label: 'DMS Report', icon: 'report', route: '/dms-report' },
     // Add more menu items as needed
   ];
 
   navigateTo(route: string) {
     this.router.navigate([route]);
+  }
+
+  // Method to toggle navigation
+  toggleNavigation() {
+    this.isNavCollapsed = !this.isNavCollapsed;
   }
   
 }
