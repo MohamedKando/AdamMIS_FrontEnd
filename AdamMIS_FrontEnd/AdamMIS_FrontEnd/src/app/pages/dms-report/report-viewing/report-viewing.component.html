@@ -1,121 +1,69 @@
-<div class="container">
-  <div class="page-header">
-    <h2>Report Viewing</h2>
-    <nav class="breadcrumb">
-      <a href="#" (click)="navigateToHome()">Home</a> > 
-      <span>Report Viewing</span>
-    </nav>
-  </div>
-
-  <div class="content-section">
-    <div class="card">
-      <div class="card-header">
-        <h3>Available Reports</h3>
-      </div>
-      <div class="card-body">
-        <p>This section will display generated reports for viewing.</p>
-        <!-- Report viewing functionality will be added here -->
-        
-        <div class="placeholder-content">
-          <div class="info-box">
-            <h4>📊 Report Viewing Features</h4>
-            <ul>
-              <li>View generated reports</li>
-              <li>Filter and search reports</li>
-              <li>Download reports</li>
-              <li>Print reports</li>
-            </ul>
+/ Updated HTML Template - Fix the button click
+<!-- Updated table section with corrected report ID -->
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>Report</th>
+        <th>Category</th>
+        <th>Assigned Date</th>
+        <th>Assigned By</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let report of reports">
+        <td>
+          <div class="report-info">
+            <span class="report-icon">📄</span>
+            <span>{{ report.reportFileName }}</span>
           </div>
+        </td>
+        <td>
+          <span [class]="getCategoryClass(report.categoryName)">
+            {{ report.categoryName }}
+          </span>
+        </td>
+        <td>{{ report.assignedAt | date:'shortDate' }}</td>
+        <td>{{ report.assignedBy }}</td>
+        <td>
+          <!-- FIXED: Use report.reportId instead of report.id -->
+          <button 
+            class="btn btn-sm btn-outline-primary me-2" 
+            (click)="onViewReport(report.reportId)" 
+            [disabled]="isGenerating(report.reportId)"
+            title="Generate Report">
+            <span class="action-icon" *ngIf="!isGenerating(report.reportId)">👁</span>
+            <span class="spinner-border spinner-border-sm" role="status" *ngIf="isGenerating(report.reportId)"></span>
+          </button>
+          <button 
+            class="btn btn-sm btn-outline-secondary" 
+            (click)="onDownloadReport(report.reportId)" 
+            title="Download Report">
+            <span class="action-icon">⬇</span>
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Optional: Add progress indicator -->
+<div *ngIf="generatingReportId" class="alert alert-info mt-3">
+  <div class="d-flex align-items-center">
+    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+    <div class="flex-grow-1">
+      <strong>{{ generationMessage }}</strong>
+      <div class="progress mt-2" style="height: 5px;">
+        <div 
+          class="progress-bar" 
+          role="progressbar" 
+          [style.width.%]="generationProgress"
+          [attr.aria-valuenow]="generationProgress"
+          aria-valuemin="0" 
+          aria-valuemax="100">
         </div>
       </div>
     </div>
   </div>
 </div>
-
-<style>
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-
-  .page-header {
-    margin-bottom: 30px;
-  }
-
-  .page-header h2 {
-    color: #2c3e50;
-    font-size: 2rem;
-    margin-bottom: 10px;
-  }
-
-  .breadcrumb {
-    color: #7f8c8d;
-    font-size: 0.9rem;
-  }
-
-  .breadcrumb a {
-    color: #3498db;
-    text-decoration: none;
-  }
-
-  .breadcrumb a:hover {
-    text-decoration: underline;
-  }
-
-  .content-section {
-    margin-bottom: 30px;
-  }
-
-  .card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    overflow: hidden;
-  }
-
-  .card-header {
-    background: #f8f9fa;
-    padding: 20px;
-    border-bottom: 1px solid #e9ecef;
-  }
-
-  .card-header h3 {
-    margin: 0;
-    color: #2c3e50;
-    font-size: 1.3rem;
-  }
-
-  .card-body {
-    padding: 20px;
-  }
-
-  .placeholder-content {
-    text-align: center;
-    padding: 40px 20px;
-  }
-
-  .info-box {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 6px;
-    padding: 20px;
-    margin: 20px 0;
-  }
-
-  .info-box h4 {
-    color: #2c3e50;
-    margin-bottom: 15px;
-  }
-
-  .info-box ul {
-    text-align: left;
-    max-width: 300px;
-    margin: 0 auto;
-  }
-
-  .info-box li {
-    margin-bottom: 8px;
-    color: #5a6c7d;
-  }
-</style>

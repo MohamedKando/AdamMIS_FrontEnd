@@ -13,6 +13,7 @@ import { NavigationComponent } from './navigation/navigation.component';
 import { DmsReportComponent } from './pages/dms-report/dms-report.component';
 import { ReportManagementComponent } from './pages/dms-report/report-management/report-management.component';
 import { ReportViewingComponent } from './pages/dms-report/report-viewing/report-viewing.component';
+import { AuthInterceptor } from './services/auth.interceptor';
 
 
 @NgModule({
@@ -37,7 +38,7 @@ import { ReportViewingComponent } from './pages/dms-report/report-viewing/report
   providers: [
     {
       provide: HTTP_INTERCEPTORS,
-      useClass:CustomeInterceptor,
+      useClass:AuthInterceptor,
       multi:true 
     }
   ],

@@ -51,12 +51,121 @@ export class ReportManagementComponent implements OnInit {
  private readonly DISPLAY_LIMIT = 10; // You can change this to 15 if preferred
 
   // ... existing constructor and methods ...
-
+  activeUserReportsSubTab: string = 'assign';
   // New methods for displaying limited items in horizontal layout
-
+  assignmentCategoryFilter: string = '';
+  assignmentDateFilter: string = '';
+    // NEW: Assignment mode and category selection
+  assignmentMode: 'individual' | 'category' = 'individual';
+  selectedCategoryForAssignment: number | null = null;
   getDisplayedUsers(): User[] {
     return this.filteredUsers.slice(0, this.DISPLAY_LIMIT);
   }
+
+    /**
+   * Handle assignment mode change
+   */
+onAssignmentModeChange(): void {
+  console.log('Assignment mode changed to:', this.assignmentMode);
+  this.resetAssignmentForm();
+  
+  // If switching to category mode, ensure reports are loaded properly
+  if (this.assignmentMode === 'category') {
+    // Clear filtered reports until a category is selected
+    this.filteredReportsForAssignment = [];
+    
+    // If a category is already selected, load its reports
+    if (this.selectedCategoryForAssignment) {
+      this.loadReportsForSelectedCategory();
+    }
+  } else {
+    // If switching to individual mode, show all reports
+    this.filteredReportsForAssignment = [...this.reports];
+  }
+}
+  /**
+   * Handle category selection change
+   */
+onCategorySelectionChange(): void {
+  console.log('Category selection changed:', this.selectedCategoryForAssignment);
+  
+  if (this.selectedCategoryForAssignment) {
+    // Ensure it's a number
+    this.selectedCategoryForAssignment = Number(this.selectedCategoryForAssignment);
+    
+    // Clear selected reports when switching categories
+    this.selectedReportIds = [];
+    
+    // Load reports for the selected category
+    this.loadReportsForSelectedCategory();
+  } else {
+    // If no category selected, clear the filtered reports
+    this.filteredReportsForAssignment = [];
+  }
+  
+  // Debug call
+  this.debugCategorySelection();
+}
+private loadReportsForSelectedCategory(): void {
+  console.log('Loading reports for category:', this.selectedCategoryForAssignment);
+  console.log('All reports:', this.reports);
+  
+  if (this.selectedCategoryForAssignment) {
+    // Ensure category ID is a number
+    const categoryId = Number(this.selectedCategoryForAssignment);
+    
+    // Get reports for the selected category
+    const categoryReports = this.reports.filter(report => {
+      console.log(`Comparing report categoryId: ${report.categoryId} with selected: ${categoryId}`);
+      return report.categoryId === categoryId;
+    });
+    
+    console.log('Found category reports:', categoryReports);
+    
+    // Update the filtered reports for assignment to show only category reports
+    this.filteredReportsForAssignment = categoryReports;
+    
+    // Clear any existing search term that might interfere
+    this.reportSearchTerm = '';
+  } else {
+    // If no category selected, show all reports
+    this.filteredReportsForAssignment = [...this.reports];
+  }
+}
+   getReportCountForCategory(categoryId: number): number {
+    return this.reports.filter(report => report.categoryId === categoryId).length;
+  }
+
+  /**
+   * Get reports for a specific category
+   */
+  getReportsForCategory(categoryId: number): Report[] {
+    return this.reports.filter(report => report.categoryId === categoryId);
+  }
+
+  /**
+   * Get category name by ID
+   */
+  getCategoryName(categoryId: number): string {
+    const category = this.categories.find(cat => cat.id === categoryId);
+    return category ? category.name : 'Unknown Category';
+  }
+
+  /**
+   * Check if reports can be assigned
+   */
+  canAssignReports(): boolean {
+    const hasUsers = this.selectedUserIds.length > 0;
+    
+    if (this.assignmentMode === 'individual') {
+      return hasUsers && this.selectedReportIds.length > 0;
+    } else if (this.assignmentMode === 'category') {
+      return hasUsers && this.selectedCategoryForAssignment !== null;
+    }
+    
+    return false;
+  }
+
 
   getDisplayedReportsForAssignment(): Report[] {
     return this.filteredReportsForAssignment.slice(0, this.DISPLAY_LIMIT);
@@ -123,14 +232,32 @@ export class ReportManagementComponent implements OnInit {
   constructor(
     private router: Router,
     private reportService: ReportService
-  ) {}
+  ) {
+    this.activeTab = 'user-reports'; // Set default tab to Report Manager
+  }
 
   ngOnInit(): void {
     this.loadInitialData();
   }
-
+  setActiveUserReportsSubTab(subTab: string): void {
+    this.activeUserReportsSubTab = subTab;
+    
+    // Load specific data based on sub-tab
+    switch (subTab) {
+      case 'assign':
+        this.loadUsersAndReportsForAssignment();
+        break;
+      case 'overview':
+        this.loadUsersWithReportsOverview();
+        break;
+      case 'history':
+        this.loadAssignmentHistory();
+        break;
+    }
+  }
+  
   // Tab Management
-  setActiveTab(tab: string): void {
+    setActiveTab(tab: string): void {
     this.activeTab = tab;
     
     // Load data based on active tab
@@ -144,7 +271,45 @@ export class ReportManagementComponent implements OnInit {
       case 'user-reports':
         this.loadUsers();
         this.loadUserReportAssignments();
+        // Set default sub-tab
+        this.setActiveUserReportsSubTab('assign');
         break;
+    }
+  }
+   private async loadUsersAndReportsForAssignment(): Promise<void> {
+    try {
+      await Promise.all([
+        this.loadUsers(),
+        this.loadReports()
+      ]);
+      this.filterUsersForAssignment();
+      this.filterReportsForAssignment();
+    } catch (error) {
+      console.error('Error loading users and reports for assignment:', error);
+    }
+  }
+
+  private async loadUsersWithReportsOverview(): Promise<void> {
+    try {
+      await Promise.all([
+        this.loadUsers(),
+        this.loadUserReportAssignments()
+      ]);
+      this.filterUsersWithReports();
+    } catch (error) {
+      console.error('Error loading users with reports overview:', error);
+    }
+  }
+
+  private async loadAssignmentHistory(): Promise<void> {
+    try {
+      await Promise.all([
+        this.loadUserReportAssignments(),
+        this.loadCategories()
+      ]);
+      this.filterUserReportAssignments();
+    } catch (error) {
+      console.error('Error loading assignment history:', error);
     }
   }
 
@@ -456,15 +621,27 @@ export class ReportManagementComponent implements OnInit {
   }
 
   // Report Search for Assignment
-  filterReportsForAssignment(): void {
-    this.filteredReportsForAssignment = this.reports.filter(report => {
-      const matchesSearch = !this.reportSearchTerm || 
-        report.fileName.toLowerCase().includes(this.reportSearchTerm.toLowerCase()) ||
-        report.categoryName.toLowerCase().includes(this.reportSearchTerm.toLowerCase());
-      
-      return matchesSearch;
-    });
+filterReportsForAssignment(): void {
+  let reportsToFilter = this.reports;
+  
+  // If in category mode, filter from category reports only
+  if (this.assignmentMode === 'category' && this.selectedCategoryForAssignment) {
+    const categoryId = Number(this.selectedCategoryForAssignment);
+    reportsToFilter = this.reports.filter(report => 
+      report.categoryId === categoryId
+    );
   }
+  
+  this.filteredReportsForAssignment = reportsToFilter.filter(report => {
+    const matchesSearch = !this.reportSearchTerm || 
+      report.fileName.toLowerCase().includes(this.reportSearchTerm.toLowerCase()) ||
+      report.categoryName.toLowerCase().includes(this.reportSearchTerm.toLowerCase());
+    
+    return matchesSearch;
+  });
+  
+  console.log('Filtered reports for assignment:', this.filteredReportsForAssignment);
+}
 
   // NEW: User Overview Search
   filterUsersWithReports(): void {
@@ -477,15 +654,52 @@ export class ReportManagementComponent implements OnInit {
   }
 
   // NEW: Assignment Search
-  filterUserReportAssignments(): void {
+filterUserReportAssignments(): void {
     this.filteredUserReportAssignments = this.userReportAssignments.filter(assignment => {
+      // Search term filter
       const matchesSearch = !this.assignmentSearchTerm || 
         assignment.userName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase()) ||
         assignment.reportFileName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase()) ||
         assignment.categoryName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase());
       
-      return matchesSearch;
+      // Category filter
+      const matchesCategory = !this.assignmentCategoryFilter || 
+        assignment.categoryName === this.assignmentCategoryFilter;
+      
+      // Date filter
+      const matchesDate = this.matchesDateFilter(assignment.assignedAt);
+      
+      return matchesSearch && matchesCategory && matchesDate;
     });
+  }
+   private matchesDateFilter(assignedDate: Date): boolean {
+    if (!this.assignmentDateFilter) return true;
+    
+    const now = new Date();
+    const assignmentDate = new Date(assignedDate);
+    
+    switch (this.assignmentDateFilter) {
+      case 'today':
+        return assignmentDate.toDateString() === now.toDateString();
+      case 'week':
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return assignmentDate >= weekAgo;
+      case 'month':
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return assignmentDate >= monthAgo;
+      default:
+        return true;
+    }
+  }
+    getTotalAssignments(): number {
+    return this.userReportAssignments.filter(assignment => assignment.isActive).length;
+  }
+
+  // New method for viewing assignment details
+  viewAssignmentDetails(assignment: UserReportAssignment): void {
+    // TODO: Implement assignment details modal/view
+    console.log('View assignment details:', assignment);
+    alert(`Assignment Details:\n\nUser: ${assignment.userName}\nReport: ${assignment.reportFileName}\nCategory: ${assignment.categoryName}\nAssigned: ${assignment.assignedAt}\nAssigned By: ${assignment.assignedBy}\nStatus: ${assignment.isActive ? 'Active' : 'Inactive'}`);
   }
 
   viewReport(report: Report): void {
@@ -590,57 +804,142 @@ export class ReportManagementComponent implements OnInit {
   }
 
   async assignReports(): Promise<void> {
-    if (this.selectedUserIds.length === 0 || this.selectedReportIds.length === 0) {
-      alert('Please select at least one user and one report');
+  console.log('assignReports called with:', {
+    canAssign: this.canAssignReports(),
+    assignmentMode: this.assignmentMode,
+    selectedUserIds: this.selectedUserIds,
+    selectedCategoryForAssignment: this.selectedCategoryForAssignment,
+    selectedReportIds: this.selectedReportIds,
+    filteredReportsForAssignment: this.filteredReportsForAssignment
+  });
+
+  if (!this.canAssignReports()) {
+    let errorMessage = 'Please select ';
+    if (this.selectedUserIds.length === 0) {
+      errorMessage += 'users';
+    }
+    if (this.assignmentMode === 'individual' && this.selectedReportIds.length === 0) {
+      errorMessage += (this.selectedUserIds.length === 0 ? ' and ' : '') + 'reports';
+    }
+    if (this.assignmentMode === 'category' && !this.selectedCategoryForAssignment) {
+      errorMessage += (this.selectedUserIds.length === 0 ? ' and ' : '') + 'a category';
+    }
+    if (this.assignmentMode === 'category' && this.selectedCategoryForAssignment && this.filteredReportsForAssignment.length === 0) {
+      errorMessage = 'Selected category has no reports available for assignment';
+    }
+    
+    alert(errorMessage);
+    return;
+  }
+
+  this.isAssigning = true;
+  try {
+    let reportIdsToAssign: number[] = [];
+    
+    if (this.assignmentMode === 'individual') {
+      reportIdsToAssign = this.selectedReportIds;
+    } else if (this.assignmentMode === 'category' && this.selectedCategoryForAssignment) {
+      // Get all report IDs for the selected category
+      const categoryId = Number(this.selectedCategoryForAssignment);
+      reportIdsToAssign = this.getReportsForCategory(categoryId)
+        .map(report => report.id);
+    }
+
+    if (reportIdsToAssign.length === 0) {
+      alert('No reports found for assignment');
       return;
     }
 
-    this.isAssigning = true;
-    try {
-      const request = {
-        userIds: this.selectedUserIds,
-        reportIds: this.selectedReportIds
-      };
-      
-      const response = await this.reportService.assignReportsToUsers(request).toPromise();
-      if (response) {
-        await this.loadUserReportAssignments(); // Reload assignments
-        this.resetAssignmentForm();
-        alert('Reports assigned successfully!');
-      }
-    } catch (error) {
-      console.error('Error assigning reports:', error);
-      alert('Error assigning reports. Please try again.');
-    } finally {
-      this.isAssigning = false;
-    }
-  }
-
-  private resetAssignmentForm(): void {
-    this.selectedUserIds = [];
-    this.selectedReportIds = [];
-    this.userSearchTerm = '';
-    this.reportSearchTerm = '';
-    this.filteredUsers = [...this.users];
-    this.filteredReportsForAssignment = [...this.reports];
+    const request = {
+      userIds: this.selectedUserIds,
+      reportIds: reportIdsToAssign
+    };
     
-    // Clear checkboxes
+    console.log('Sending assignment request:', request);
+    
+    const response = await this.reportService.assignReportsToUsers(request).toPromise();
+    if (response) {
+      await this.loadUserReportAssignments(); // Reload assignments
+      this.resetAssignmentForm();
+      
+      const assignmentType = this.assignmentMode === 'category' ? 'category' : 'individual reports';
+      const reportCount = reportIdsToAssign.length;
+      const userCount = this.selectedUserIds.length;
+      
+      alert(`Successfully assigned ${reportCount} reports to ${userCount} users via ${assignmentType}!`);
+    }
+  } catch (error) {
+    console.error('Error assigning reports:', error);
+    alert('Error assigning reports. Please try again.');
+  } finally {
+    this.isAssigning = false;
+  }
+}
+// Update the resetAssignmentForm method:
+resetAssignmentForm(): void {
+  console.log('Resetting assignment form...');
+  
+  this.selectedUserIds = [];
+  this.selectedReportIds = [];
+  this.selectedCategoryForAssignment = null;
+  this.userSearchTerm = '';
+  this.reportSearchTerm = '';
+  this.filteredUsers = [...this.users];
+  
+  // Handle filtered reports based on assignment mode
+  if (this.assignmentMode === 'category') {
+    this.filteredReportsForAssignment = []; // Clear until category is selected
+  } else {
+    this.filteredReportsForAssignment = [...this.reports]; // Show all reports for individual mode
+  }
+  
+  // Clear checkboxes
+  setTimeout(() => {
     const checkboxes = document.querySelectorAll('input[type="checkbox"]');
     checkboxes.forEach(checkbox => {
       (checkbox as HTMLInputElement).checked = false;
     });
-  }
-
+    
+    // Clear select dropdown
+    const categorySelect = document.querySelector('select') as HTMLSelectElement;
+    if (categorySelect) {
+      categorySelect.value = '';
+    }
+  }, 100);
+  
+  console.log('Assignment form reset complete');
+}
   viewUserReports(userId: string): void {
-    // TODO: Implement user reports viewing
-    console.log('View user reports for:', userId);
-    alert('User reports viewing functionality will be implemented in next phase');
+    // Switch to history tab and filter by user
+    this.setActiveUserReportsSubTab('history');
+    
+    // Filter assignments for this user
+    const user = this.users.find(u => u.id === userId);
+    if (user) {
+      this.assignmentSearchTerm = user.userName;
+      this.filterUserReportAssignments();
+    }
   }
 
   assignMoreReports(userId: string): void {
-    // TODO: Implement assign more reports
-    console.log('Assign more reports to:', userId);
-    alert('Assign more reports functionality will be implemented in next phase');
+    // Switch to assign tab and pre-select the user
+    this.setActiveUserReportsSubTab('assign');
+    
+    // Pre-select the user
+    this.selectedUserIds = [userId];
+    
+    // Update the checkbox state
+    setTimeout(() => {
+      const userCheckbox = document.getElementById(`user-${userId}`) as HTMLInputElement;
+      if (userCheckbox) {
+        userCheckbox.checked = true;
+      }
+    }, 100);
+    
+    // Clear other selections
+    this.selectedReportIds = [];
+    this.reportSearchTerm = '';
+    this.filterReportsForAssignment();
   }
 
   async removeAssignment(assignmentId: number): Promise<void> {
@@ -664,6 +963,24 @@ export class ReportManagementComponent implements OnInit {
   async refreshData(): Promise<void> {
     await this.loadInitialData();
   }
+debugCategorySelection(): void {
+  console.log('=== DEBUG CATEGORY SELECTION ===');
+  console.log('Assignment mode:', this.assignmentMode);
+  console.log('Selected category (raw):', this.selectedCategoryForAssignment);
+  console.log('Selected category (number):', Number(this.selectedCategoryForAssignment));
+  console.log('All categories:', this.categories);
+  console.log('All reports:', this.reports);
+  
+  if (this.selectedCategoryForAssignment) {
+    const categoryId = Number(this.selectedCategoryForAssignment);
+    const categoryReports = this.getReportsForCategory(categoryId);
+    console.log('Category reports:', categoryReports);
+  }
+  
+  console.log('Filtered reports for assignment:', this.filteredReportsForAssignment);
+  console.log('Can assign reports:', this.canAssignReports());
+  console.log('================================');
+}
 
   async testApiConnection(): Promise<void> {
     try {

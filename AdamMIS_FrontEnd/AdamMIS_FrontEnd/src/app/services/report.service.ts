@@ -61,6 +61,15 @@ export interface UploadProgress {
   progress: number;
   status: 'uploading' | 'processing' | 'completed' | 'error';
   message?: string;
+  data?: any;
+}
+
+// Updated interface for generate report response to match your C# endpoint
+export interface GenerateReportResponse {
+  message: string;
+  reportId: number;
+  fileName: string;
+  generatedAt: string; // ISO date string
 }
 
 @Injectable({
@@ -217,6 +226,171 @@ export class ReportService {
   }
 
   /**
+   * Generate report from .rpt file with progress tracking
+   * POST /api/Reports/generate-report (if you still have a file upload endpoint)
+   */
+  generateReport(rptFile: File): Observable<UploadProgress> {
+    // Validate file type before sending
+    const allowedExtensions = ['.rpt'];
+    const fileExtension = rptFile.name.toLowerCase().substring(rptFile.name.lastIndexOf('.'));
+    
+    if (!allowedExtensions.includes(fileExtension)) {
+      return throwError(() => new Error('Only .rpt files are allowed.'));
+    }
+
+    // Validate file size (10MB limit)
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    if (rptFile.size > maxFileSize) {
+      return throwError(() => new Error('File size exceeds the maximum limit of 10MB.'));
+    }
+
+    const formData = new FormData();
+    formData.append('rptFile', rptFile);
+
+    return this.http.post<GenerateReportResponse>(`${this.apiUrl}/generate-report`, formData, {
+      reportProgress: true,
+      observe: 'events'
+    }).pipe(
+      map((event: HttpEvent<any>) => {
+        switch (event.type) {
+          case HttpEventType.UploadProgress:
+            if (event.total) {
+              const progress = Math.round(100 * event.loaded / event.total);
+              return {
+                progress: progress < 90 ? progress : 90, // Reserve 10% for processing
+                status: 'uploading' as const,
+                message: `Uploading .rpt file... ${progress}%`
+              };
+            }
+            return {
+              progress: 0,
+              status: 'uploading' as const,
+              message: 'Starting upload...'
+            };
+
+          case HttpEventType.Response:
+            if (event.body) {
+              return {
+                progress: 100,
+                status: 'completed' as const,
+                message: event.body.message || 'Report generated successfully!',
+                data: event.body
+              };
+            }
+            return {
+              progress: 100,
+              status: 'completed' as const,
+              message: 'Report generated successfully!'
+            };
+
+          default:
+            return {
+              progress: 90,
+              status: 'processing' as const,
+              message: 'Processing report with ReportGenerator...'
+            };
+        }
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Generate report - Simple version without progress tracking
+   * POST /api/Reports/generate-report
+   */
+  generateReportSimple(rptFile: File): Observable<GenerateReportResponse> {
+    // Validate file type before sending
+    const allowedExtensions = ['.rpt'];
+    const fileExtension = rptFile.name.toLowerCase().substring(rptFile.name.lastIndexOf('.'));
+    
+    if (!allowedExtensions.includes(fileExtension)) {
+      return throwError(() => new Error('Only .rpt files are allowed.'));
+    }
+
+    // Validate file size (10MB limit)
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    if (rptFile.size > maxFileSize) {
+      return throwError(() => new Error('File size exceeds the maximum limit of 10MB.'));
+    }
+
+    const formData = new FormData();
+    formData.append('rptFile', rptFile);
+
+    return this.http.post<GenerateReportResponse>(`${this.apiUrl}/generate-report`, formData).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Generate report from existing report ID
+   * POST /api/Reports/reports/{reportId}/generate
+   */
+  generateReportById(reportId: number): Observable<GenerateReportResponse> {
+    return this.http.post<GenerateReportResponse>(`${this.apiUrl}/reports/${reportId}/generate`, {}).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Generate report from existing report ID with progress simulation
+   * POST /api/Reports/reports/{reportId}/generate
+   */
+  generateReportByIdWithProgress(reportId: number): Observable<UploadProgress> {
+    return new Observable(observer => {
+      // Simulate progress during generation
+      observer.next({
+        progress: 0,
+        status: 'processing',
+        message: 'Initializing report generation...'
+      });
+
+      // Simulate progress steps
+      const progressSteps = [
+        { progress: 20, message: 'Validating report file...' },
+        { progress: 40, message: 'Starting ReportGenerator.exe...' },
+        { progress: 60, message: 'Processing report data...' },
+        { progress: 80, message: 'Generating output...' },
+        { progress: 90, message: 'Finalizing report...' }
+      ];
+
+      let currentStep = 0;
+      const progressInterval = setInterval(() => {
+        if (currentStep < progressSteps.length) {
+          observer.next({
+            progress: progressSteps[currentStep].progress,
+            status: 'processing',
+            message: progressSteps[currentStep].message
+          });
+          currentStep++;
+        } else {
+          clearInterval(progressInterval);
+          // Make the actual API call
+          this.generateReportById(reportId).subscribe({
+            next: (response) => {
+              observer.next({
+                progress: 100,
+                status: 'completed',
+                message: response.message || 'Report generated successfully!',
+                data: response
+              });
+              observer.complete();
+            },
+            error: (error) => {
+              observer.next({
+                progress: 0,
+                status: 'error',
+                message: error.message || 'Report generation failed'
+              });
+              observer.error(error);
+            }
+          });
+        }
+      }, 500); // Update every 500ms
+    });
+  }
+
+  /**
    * Delete report
    * DELETE /api/Reports/reports/{id}
    */
@@ -317,6 +491,27 @@ export class ReportService {
     } else {
       // Server-side error
       errorMessage = error.error?.message || `Error: ${error.status}`;
+      
+      // Handle specific error cases from your C# endpoint
+      if (error.status === 404) {
+        if (error.error?.includes('Report not found')) {
+          errorMessage = 'Report not found in database';
+        } else if (error.error?.includes('Report file not found')) {
+          errorMessage = 'Report file not found on server';
+        } else if (error.error?.includes('ReportGenerator.exe not found')) {
+          errorMessage = 'Report generator application not found';
+        }
+      } else if (error.status === 400) {
+        if (error.error?.includes('Invalid report file type')) {
+          errorMessage = 'Invalid report file type. Only .rpt files are supported.';
+        }
+      } else if (error.status === 500) {
+        if (error.error?.includes('timed out')) {
+          errorMessage = 'Report generation timed out. Please try again.';
+        } else if (error.error?.includes('Report generation failed')) {
+          errorMessage = 'Report generation failed. Please check the report file.';
+        }
+      }
     }
     
     return throwError(() => new Error(errorMessage));
