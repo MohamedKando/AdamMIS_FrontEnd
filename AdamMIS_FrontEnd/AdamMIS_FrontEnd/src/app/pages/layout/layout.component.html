@@ -372,12 +372,13 @@
             <div *ngIf="item.hasSubmenu" 
                  class="submenu"
                  [class.expanded]="expandedMenus[item.icon]">
-                <div class="submenu-item" *ngFor="let subItem of item.submenuItems">
-                    <a [class.active]="isActiveRoute(subItem.route)"
-                       (click)="navigateTo(subItem.route)">
+                    <div class="submenu-item" *ngFor="let subItem of item.submenuItems">
+                    <a *ngIf="subItem.label !== 'Report Management' || hasPermission('view:reportmanager')"
+                        [class.active]="isActiveRoute(subItem.route)" 
+                        (click)="navigateTo(subItem.route)">
                         {{ subItem.label }}
                     </a>
-                </div>
+                    </div>
             </div>
         </div>
     </nav>

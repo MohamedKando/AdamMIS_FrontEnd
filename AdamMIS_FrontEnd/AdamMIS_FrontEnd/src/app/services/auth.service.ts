@@ -77,7 +77,7 @@ getUserName(): string {
  * @param token - JWT token
  * @returns any - Decoded payload or null
  */
-private decodeJwtPayload(token: string): any {
+decodeJwtPayload(token: string): any {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -93,6 +93,70 @@ private decodeJwtPayload(token: string): any {
     console.error('Error decoding JWT payload:', error);
     return null;
   }
+}
+getUserRoles(): string[] {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return [];
+    }
+
+    const payload = this.decodeJwtPayload(token);
+    // Your JWT has roles as an array
+    return payload?.roles || [];
+  } catch (error) {
+    console.error('Error getting user roles:', error);
+    return [];
+  }
+}
+
+/**
+ * Get user permissions from JWT token  
+ */
+getUserPermissions(): string[] {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return [];
+    }
+
+    const payload = this.decodeJwtPayload(token);
+    return payload?.permissions || [];
+  } catch (error) {
+    console.error('Error getting user permissions:', error);
+    return [];
+  }
+}
+
+/**
+ * Check if user has specific role
+ */
+hasRole(role: string): boolean {
+  const userRoles = this.getUserRoles();
+  return userRoles.includes(role);
+}
+
+/**
+ * Check if user has any of the specified roles
+ */
+hasAnyRole(roles: string[]): boolean {
+  const userRoles = this.getUserRoles();
+  return roles.some(role => userRoles.includes(role));
+}
+
+/**
+ * Check if user has specific permission
+ */
+hasPermission(permission: string): boolean {
+  const userPermissions = this.getUserPermissions();
+  return userPermissions.includes(permission);
+}
+
+/**
+ * Check if user is SuperAdmin
+ */
+isSuperAdmin(): boolean {
+  return this.hasRole('SuperAdmin');
 }
   logout(): void {
     localStorage.removeItem('token');

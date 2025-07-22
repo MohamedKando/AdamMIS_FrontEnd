@@ -6,8 +6,16 @@ import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { DmsReportComponent } from './pages/dms-report/dms-report.component';
 import { ReportManagementComponent } from './pages/dms-report/report-management/report-management.component';
 import { ReportViewingComponent } from './pages/dms-report/report-viewing/report-viewing.component';
+import { UnauthorizedComponent } from './pages/unauthorized/unauthorized.component';
+
+// Import Guards
+
+import { PermissionGuard } from './guards/permission.guard';
+
 
 const routes: Routes = [
+   { path: 'login', component: LoginComponent },
+  { path: 'unauthorized', component: UnauthorizedComponent },
   {
     path: 'login',
     component: LoginComponent

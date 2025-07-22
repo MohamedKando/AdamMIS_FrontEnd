@@ -1,6 +1,19 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+interface SubmenuItem {
+  label: string;
+  route: string;
+  requiresSuperAdmin?: boolean; // Optional property
+}
 
+interface MenuItem {
+  label: string;
+  icon: string;
+  route: string;
+  hasSubmenu?: boolean;
+  submenuItems?: SubmenuItem[];
+}
 @Component({
   selector: 'app-layout',
   templateUrl: './layout.component.html',
@@ -11,8 +24,14 @@ export class LayoutComponent {
   // Add navigation collapse state
   isNavCollapsed = false;
   
-  constructor(private router: Router) {}
+  constructor(private router: Router , private authService: AuthService) {}
+isSuperAdmin(): boolean {
+  return this.authService.isSuperAdmin();
+}
 
+hasPermission(permission:string):boolean {
+  return this.authService.hasPermission(permission)
+}
   // Track which menu items are expanded
   expandedMenus: { [key: string]: boolean } = {
     'dms-report': false
@@ -26,7 +45,7 @@ export class LayoutComponent {
       route: '/dms-report',
       hasSubmenu: true,
       submenuItems: [
-        { label: 'Report Management', route: '/dms-report/management' },
+        { label: 'Report Management', route: '/dms-report/management',requiresSuperAdmin: true },
         { label: 'Report Viewing', route: '/dms-report/viewing' }
       ]
     }
@@ -85,4 +104,5 @@ export class LayoutComponent {
       this.router.navigate(['/login']);
     }
   }
+  
 }
