@@ -15,6 +15,7 @@ export class NavigationComponent {
   menuItems = [
     { label: 'Dashboard', icon: 'dashboard', route: '/dashboard' },
     { label: 'DMS Report', icon: 'report', route: '/dms-report' },
+    { label: 'Admin Management', icon: 'admin', route: '/admin-management' }
     // Add more menu items as needed
   ];
 
@@ -26,5 +27,4 @@ export class NavigationComponent {
   toggleNavigation() {
     this.isNavCollapsed = !this.isNavCollapsed;
   }
-  
 }

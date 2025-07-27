@@ -1,0 +1,286 @@
+<div class="role-management-container">
+  <!-- Header Section -->
+  <div class="header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <i class="icon-shield"></i>
+        Role Management
+      </h1>
+      <p class="page-subtitle">Manage system roles and permissions</p>
+    </div>
+    <div class="header-actions">
+      <div class="view-toggle">
+        <button 
+          class="toggle-btn"
+          [class.active]="currentView === 'list'"
+          (click)="setView('list')">
+          <i class="icon-list"></i>
+          List View
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="alerts" *ngIf="error || success">
+    <div class="alert alert-error" *ngIf="error">
+      <i class="icon-alert-circle"></i>
+      {{ error }}
+      <button class="alert-close" (click)="error = null">
+        <i class="icon-x"></i>
+      </button>
+    </div>
+    <div class="alert alert-success" *ngIf="success">
+      <i class="icon-check-circle"></i>
+      {{ success }}
+      <button class="alert-close" (click)="success = null">
+        <i class="icon-x"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Content Grid -->
+  <div class="content-grid" [class.full-width]="currentView !== 'edit'">
+    <!-- Roles List Section -->
+    <div class="roles-section">
+      <div class="section-header">
+        <h2 class="section-title">Roles ({{ roles.length }})</h2>
+        <div class="filter-controls">
+          <label class="checkbox-container">
+            <input 
+              type="checkbox" 
+              [checked]="includeDisabled"
+              (change)="onToggleIncludeDisabled()">
+            <span class="checkmark"></span>
+            Show disabled roles
+          </label>
+          <button 
+            class="btn-primary"
+            (click)="setView('add')"
+            [disabled]="isLoading">
+            <i class="icon-plus"></i>
+            Add New Role
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading-container" *ngIf="isLoading">
+        <div class="loading-spinner"></div>
+        <p>Loading roles...</p>
+      </div>
+
+      <!-- Roles Table -->
+      <div class="roles-table" *ngIf="!isLoading">
+        <div class="role-row" 
+             *ngFor="let role of roles" 
+             [class.disabled-row]="role.isDeleted"
+             [class.selected]="selectedRole?.id === role.id"
+             (click)="selectRole(role)">
+          <div class="role-info">
+            <div class="role-avatar">
+              {{ role.name.charAt(0).toUpperCase() }}
+            </div>
+            <div class="role-details">
+              <h4>{{ role.name }}</h4>
+              <div class="role-meta">
+                <span class="permission-count">
+                  <i class="icon-key"></i>
+                  {{ getPermissionCount(role) }} permissions
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="role-status">
+            <span [class]="getRoleStatusClass(role.isDeleted)" class="status-badge">
+              {{ getRoleStatusText(role.isDeleted) }}
+            </span>
+          </div>
+          <div class="role-actions">
+            <button 
+              class="btn-small btn-outline"
+              (click)="editRole(role); $event.stopPropagation()"
+              title="Edit Role">
+              <i class="icon-edit"></i>
+              Edit
+            </button>
+            <button 
+              class="btn-small"
+              [class.btn-success]="role.isDeleted"
+              [class.btn-warning]="!role.isDeleted"
+              (click)="onToggleStatus(role); $event.stopPropagation()"
+              [title]="role.isDeleted ? 'Enable Role' : 'Disable Role'">
+              <i [class.icon-check]="role.isDeleted" [class.icon-pause]="!role.isDeleted"></i>
+              {{ role.isDeleted ? 'Enable' : 'Disable' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="roles.length === 0">
+          <i class="icon-folder-x"></i>
+          <h3>No roles found</h3>
+          <p>{{ includeDisabled ? 'No roles available in the system.' : 'No active roles found. Try including disabled roles.' }}</p>
+          <button class="btn-primary" (click)="setView('add')">
+            <i class="icon-plus"></i>
+            Create First Role
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Panel -->
+    <div class="form-panel" *ngIf="currentView === 'add' || currentView === 'edit'">
+      <div class="form-header">
+        <h3 class="form-title">
+          {{ currentView === 'add' ? 'Add New Role' : 'Edit Role' }}
+        </h3>
+        <button class="close-btn" (click)="setView('list')">
+          <i class="icon-x"></i>
+        </button>
+      </div>
+
+      <div class="form-content">
+        <form [formGroup]="currentView === 'add' ? roleForm : editRoleForm" 
+              (ngSubmit)="currentView === 'add' ? onAddRole() : onEditRole()">
+          <div class="form-group">
+            <label class="form-label" for="roleName">Role Name</label>
+            <input 
+              id="roleName"
+              type="text" 
+              formControlName="name"
+              class="form-input"
+              placeholder="Enter role name"
+              [class.error]="isFieldInvalid('name')">
+            <div class="error-message" *ngIf="isFieldInvalid('name')">
+              Role name is required and must be at least 2 characters long.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Permissions</label>
+            
+            <!-- Permission Search -->
+            <div class="permission-search" *ngIf="!isLoadingPermissions && availablePermissions.length > 0">
+              <div class="search-input-container">
+                <i class="icon-search search-icon"></i>
+                <input 
+                  type="text" 
+                  class="search-input"
+                  placeholder="Search permissions..."
+                  [(ngModel)]="permissionSearchTerm"
+                  (ngModelChange)="onPermissionSearch($event)"
+                  [ngModelOptions]="{standalone: true}">
+                <button 
+                  type="button" 
+                  class="clear-search-btn"
+                  *ngIf="permissionSearchTerm"
+                  (click)="clearPermissionSearch()"
+                  title="Clear search">
+                  <i class="icon-x"></i>
+                </button>
+              </div>
+              <div class="search-results-info" *ngIf="permissionSearchTerm">
+                <span class="results-count">
+                  {{ getFilteredPermissions().length }} of {{ availablePermissions.length }} permissions
+                </span>
+                <button 
+                  type="button" 
+                  class="btn-link"
+                  (click)="clearPermissionSearch()">
+                  Show all
+                </button>
+              </div>
+            </div>
+            
+            <!-- Loading state for permissions -->
+            <div class="loading-container" *ngIf="isLoadingPermissions">
+              <div class="loading-spinner small"></div>
+              <p>Loading permissions...</p>
+            </div>
+            
+            <!-- Permissions grid -->
+            <div class="permissions-grid" *ngIf="!isLoadingPermissions && availablePermissions.length > 0">
+              <!-- Select All / Deselect All Controls -->
+              <div class="permission-controls" *ngIf="getFilteredPermissions().length > 1">
+                <button 
+                  type="button" 
+                  class="btn-link select-all-btn"
+                  (click)="selectAllFilteredPermissions()">
+                  <i class="icon-check-square"></i>
+                  Select All Visible
+                </button>
+                <button 
+                  type="button" 
+                  class="btn-link deselect-all-btn"
+                  (click)="deselectAllFilteredPermissions()">
+                  <i class="icon-square"></i>
+                  Deselect All Visible
+                </button>
+                <span class="selected-count">
+                  {{ getSelectedPermissionCount() }} selected
+                </span>
+              </div>
+              
+              <div 
+                class="permission-item" 
+                *ngFor="let permission of getFilteredPermissions(); let i = index; trackBy: trackByPermission">
+                <label class="permission-label">
+                  <input 
+                    type="checkbox"
+                    [checked]="isPermissionSelected(getOriginalPermissionIndex(permission))"
+                    (change)="onPermissionChange(getOriginalPermissionIndex(permission), $event)">
+                  <span class="permission-checkmark"></span>
+                  <span class="permission-text" [innerHTML]="highlightSearchTerm(permission)"></span>
+                </label>
+              </div>
+              
+              <!-- No search results -->
+              <div class="no-search-results" *ngIf="permissionSearchTerm && getFilteredPermissions().length === 0">
+                <i class="icon-search"></i>
+                <h4>No permissions found</h4>
+                <p>No permissions match your search term "{{ permissionSearchTerm }}"</p>
+                <button 
+                  type="button" 
+                  class="btn-outline"
+                  (click)="clearPermissionSearch()">
+                  Clear search
+                </button>
+              </div>
+            </div>
+            
+            <!-- No permissions state -->
+            <div class="empty-permissions" *ngIf="!isLoadingPermissions && availablePermissions.length === 0">
+              <i class="icon-alert-triangle"></i>
+              <p>No permissions available. Please check your connection and try again.</p>
+              <button type="button" class="btn-outline" (click)="loadAvailablePermissions()">
+                <i class="icon-refresh-cw"></i>
+                Retry Loading Permissions
+              </button>
+            </div>
+            
+            <div class="error-message" *ngIf="hasNoPermissions() && !isLoadingPermissions">
+              Please select at least one permission.
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" (click)="setView('list')">
+              <i class="icon-x"></i>
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              class="btn-primary"
+              [disabled]="isFormInvalid() || isLoading || isLoadingPermissions">
+              <span *ngIf="isLoading" class="loading-spinner small"></span>
+              <i *ngIf="!isLoading" [class.icon-plus]="currentView === 'add'" [class.icon-save]="currentView === 'edit'"></i>
+              {{ currentView === 'add' ? 'Create Role' : 'Update Role' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

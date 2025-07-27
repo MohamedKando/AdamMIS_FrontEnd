@@ -7,6 +7,9 @@ import { DmsReportComponent } from './pages/dms-report/dms-report.component';
 import { ReportManagementComponent } from './pages/dms-report/report-management/report-management.component';
 import { ReportViewingComponent } from './pages/dms-report/report-viewing/report-viewing.component';
 import { UnauthorizedComponent } from './pages/unauthorized/unauthorized.component';
+import { AdminManagementComponent } from './pages/admin-management/admin-management.component';
+import {UserManagementComponent} from './pages/admin-management/user-management/user-management.component';
+import {RoleManagementComponent} from './pages/admin-management/role-management/role-management.component';
 
 // Import Guards
 
@@ -34,7 +37,9 @@ const routes: Routes = [
         children: [
           {
             path: 'management',
-            component: ReportManagementComponent
+            component: ReportManagementComponent,
+            canActivate: [ PermissionGuard],
+            data: { permission: 'View Report Manager' } 
           },
           {
             path: 'viewing',
@@ -47,6 +52,25 @@ const routes: Routes = [
           }
         ]
       },
+      {
+    path: 'admin-management',
+    component: AdminManagementComponent,
+    children: [
+      {
+        path: '',
+        redirectTo: 'user-management',
+        pathMatch: 'full'
+      },
+      {
+        path: 'user-management',
+        component: UserManagementComponent
+      },
+      {
+        path: 'role-management',
+        component: RoleManagementComponent
+      }
+    ]
+  },
       {
         path: '',
         redirectTo: 'dashboard',
