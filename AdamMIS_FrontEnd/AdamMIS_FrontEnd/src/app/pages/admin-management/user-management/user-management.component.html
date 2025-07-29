@@ -1,1 +1,246 @@
-<p>user-management works!</p>
+<!-- User Management Header -->
+<div class="page-header">
+  <div class="header-content">
+    <h1 class="page-title">User Management</h1>
+    <p class="page-subtitle">Manage users, roles, and permissions</p>
+  </div>
+  <button class="btn btn-primary" (click)="openAddUserModal()">
+    <i class="icon-plus"></i>
+    Add New User
+  </button>
+</div>
+
+<!-- Tab Navigation -->
+<div class="tab-navigation">
+  <button 
+    class="tab-btn" 
+    [class.active]="activeTab === 'all'"
+    (click)="onTabChange('all')">
+    All Users ({{ users.length }})
+  </button>
+  <button 
+    class="tab-btn" 
+    [class.active]="activeTab === 'banned'"
+    (click)="onTabChange('banned')">
+    Banned Users ({{ bannedUsers.length }})
+  </button>
+</div>
+
+<!-- Search Bar -->
+<div class="search-container">
+  <div class="search-box">
+    <i class="icon-search"></i>
+    <input 
+      type="text" 
+      placeholder="Search users by name or role..."
+      [(ngModel)]="searchTerm"
+      class="search-input">
+  </div>
+</div>
+
+<!-- Loading Spinner -->
+<div *ngIf="loading" class="loading-container">
+  <div class="spinner"></div>
+  <p>Loading users...</p>
+</div>
+
+<!-- Users Table -->
+<div *ngIf="!loading" class="table-container">
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Status</th>
+        <th>Roles</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let user of filteredUsers" class="user-row">
+        <td class="user-info">
+          <div class="user-avatar">
+            {{ user.userName.charAt(0).toUpperCase() }}
+          </div>
+          <div class="user-details">
+            <span class="username">{{ user.userName }}</span>
+            <span class="user-id">ID: {{ user.id }}</span>
+          </div>
+        </td>
+        <td>
+          <span class="status-badge" [ngClass]="getStatusClass(user)">
+            {{ getStatusText(user) }}
+          </span>
+        </td>
+        <td class="roles-cell">
+          <div class="roles-container">
+            <span *ngFor="let role of user.roles" class="role-tag">
+              {{ role }}
+            </span>
+            <span *ngIf="user.roles.length === 0" class="no-roles">No roles assigned</span>
+          </div>
+        </td>
+        <td class="actions-cell">
+          <div class="action-buttons">
+            <button 
+              class="btn-action btn-edit" 
+              (click)="openRoleModal(user)"
+              title="Edit Roles">
+              <i class="icon-edit"></i>
+            </button>
+            <button 
+              class="btn-action" 
+              [class.btn-ban]="!user.isDisabled"
+              [class.btn-unban]="user.isDisabled"
+              (click)="toggleUserStatus(user)"
+              [title]="user.isDisabled ? 'Unban User' : 'Ban User'">
+              <i [class]="user.isDisabled ? 'icon-unlock' : 'icon-lock'"></i>
+            </button>
+            <button 
+              class="btn-action btn-delete" 
+              (click)="confirmDelete(user)"
+              title="Delete User">
+              <i class="icon-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <!-- Empty State -->
+  <div *ngIf="filteredUsers.length === 0" class="empty-state">
+    <div class="empty-icon">👥</div>
+    <h3>No users found</h3>
+    <p *ngIf="searchTerm">Try adjusting your search criteria</p>
+    <p *ngIf="!searchTerm && activeTab === 'all'">No users have been added yet</p>
+    <p *ngIf="!searchTerm && activeTab === 'banned'">No banned users</p>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div *ngIf="showAddUserModal" class="modal-overlay" (click)="closeAddUserModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Add New User</h2>
+      <button class="close-btn" (click)="closeAddUserModal()">×</button>
+    </div>
+    
+    <form [formGroup]="addUserForm" (ngSubmit)="onSubmitAddUser()">
+      <div class="form-group">
+        <label for="userName">Username</label>
+        <input 
+          type="text" 
+          id="userName"
+          formControlName="userName"
+          class="form-input"
+          placeholder="Enter username">
+        <div *ngIf="addUserForm.get('userName')?.invalid && addUserForm.get('userName')?.touched" 
+             class="error-message">
+          Username is required (minimum 3 characters)
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input 
+          type="password" 
+          id="password"
+          formControlName="password"
+          class="form-input"
+          placeholder="Enter password">
+        <div *ngIf="addUserForm.get('password')?.invalid && addUserForm.get('password')?.touched" 
+             class="error-message">
+          Password is required (minimum 6 characters)
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Roles</label>
+        <div class="checkbox-group">
+          <label *ngFor="let role of roles" class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [value]="role.name"
+              (change)="onRoleCheckboxChange($event, role.name)">
+            <span class="checkmark"></span>
+            {{ role.name }}
+          </label>
+        </div>
+        <div *ngIf="addUserForm.get('roles')?.invalid && addUserForm.get('roles')?.touched" 
+             class="error-message">
+          Please select at least one role
+        </div>
+      </div>
+      
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeAddUserModal()">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="addUserForm.invalid || loading">
+          <span *ngIf="loading" class="btn-spinner"></span>
+          Add User
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Role Management Modal -->
+<div *ngIf="showRoleModal" class="modal-overlay" (click)="closeRoleModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Manage Roles - {{ selectedUser?.userName }}</h2>
+      <button class="close-btn" (click)="closeRoleModal()">×</button>
+    </div>
+    
+    <form [formGroup]="roleForm" (ngSubmit)="onSubmitRoles()">
+      <div class="form-group">
+        <label>Assign Roles</label>
+        <div class="checkbox-group">
+          <label *ngFor="let role of roles" class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [value]="role.id"
+              [checked]="roleForm.value.roleIds?.includes(role.id)"
+              (change)="onRoleIdCheckboxChange($event, role.id)">
+            <span class="checkmark"></span>
+            {{ role.name }}
+          </label>
+        </div>
+      </div>
+      
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeRoleModal()">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="roleForm.invalid">
+          Update Roles
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div *ngIf="showDeleteConfirm" class="modal-overlay" (click)="cancelDelete()">
+  <div class="modal-content modal-small" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Confirm Action</h2>
+      <button class="close-btn" (click)="cancelDelete()">×</button>
+    </div>
+    
+    <div class="modal-body">
+      <p>Are you sure you want to ban user <strong>{{ userToDelete?.userName }}</strong>?</p>
+      <p class="warning-text">This action will disable the user's account.</p>
+    </div>
+    
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" (click)="cancelDelete()">
+        Cancel
+      </button>
+      <button type="button" class="btn btn-danger" (click)="deleteUser()">
+        Ban User
+      </button>
+    </div>
+  </div>
+</div>
