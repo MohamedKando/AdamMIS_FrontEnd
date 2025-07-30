@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { UserService, UserResponse, CreateUserRequest, Role, UserRoleRequest } from '../../../services/user.service';
+import { UserService, UserResponse, CreateUserRequest, RolesResponse, UserRoleRequest } from '../../../services/user.service';
 
 @Component({
   selector: 'app-user-management',
@@ -10,7 +10,8 @@ import { UserService, UserResponse, CreateUserRequest, Role, UserRoleRequest } f
 export class UserManagementComponent implements OnInit {
   users: UserResponse[] = [];
   bannedUsers: UserResponse[] = [];
-  roles: Role[] = [];
+  allUsersData: UserResponse[] = []; // Store all users for real-time filtering
+  roles: RolesResponse[] = [];
   
   activeTab: 'all' | 'banned' = 'all';
   showAddUserModal = false;
@@ -51,23 +52,20 @@ export class UserManagementComponent implements OnInit {
     this.loading = true;
     console.log('Loading users...');
     
-    // Use getUsersWithRoles to get users with their roles properly populated
-    this.userService.getUsersWithRoles().subscribe({
+    this.userService.getAllUsers().subscribe({
       next: (users) => {
         console.log('Users loaded successfully:', users);
         
+        // Store all users data and ensure roles is always an array
+        this.allUsersData = users.map(user => ({
+          ...user,
+          roles: Array.isArray(user.roles) ? user.roles : []
+        }));
+        
         // Separate active and banned users
-        this.users = users.filter(user => !user.isDisabled).map(user => ({
-          ...user,
-          roles: Array.isArray(user.roles) ? user.roles : []
-        }));
-        
-        this.bannedUsers = users.filter(user => user.isDisabled).map(user => ({
-          ...user,
-          roles: Array.isArray(user.roles) ? user.roles : []
-        }));
-        
+        this.updateUserLists();
         this.loading = false;
+        
         console.log('Active users:', this.users);
         console.log('Banned users:', this.bannedUsers);
       },
@@ -79,12 +77,9 @@ export class UserManagementComponent implements OnInit {
     });
   }
 
-  loadBannedUsers(): void {
-    // This method is now handled in loadUsers() above
-    // But we'll keep it for consistency with the template
-    if (this.bannedUsers.length === 0) {
-      this.loadUsers();
-    }
+  private updateUserLists(): void {
+    this.users = this.allUsersData.filter(user => !user.isDisabled);
+    this.bannedUsers = this.allUsersData.filter(user => user.isDisabled);
   }
 
   loadRoles(): void {
@@ -93,13 +88,9 @@ export class UserManagementComponent implements OnInit {
     this.userService.getAllRoles().subscribe({
       next: (roles) => {
         console.log('Roles loaded successfully:', roles);
-        this.roles = Array.isArray(roles) ? roles : [];
-        
-        // Ensure each role has required properties
-        this.roles = this.roles.map(role => ({
-          id: role.id || '',
-          name: role.name || ''
-        }));
+        // Filter out deleted roles
+        this.roles = roles.filter(role => !role.isDeleted);
+        console.log('Active roles:', this.roles);
       },
       error: (error) => {
         console.error('Error loading roles:', error);
@@ -112,11 +103,6 @@ export class UserManagementComponent implements OnInit {
   onTabChange(tab: 'all' | 'banned'): void {
     console.log('Tab changed to:', tab);
     this.activeTab = tab;
-    
-    // Always ensure we have fresh data
-    if (this.users.length === 0 || this.bannedUsers.length === 0) {
-      this.loadUsers();
-    }
   }
 
   openAddUserModal(): void {
@@ -133,39 +119,61 @@ export class UserManagementComponent implements OnInit {
     this.showAddUserModal = false;
   }
 
-  onSubmitAddUser(): void {
-    if (this.addUserForm.valid) {
-      this.loading = true;
-      const request: CreateUserRequest = this.addUserForm.value;
-      
-      console.log('Adding user:', request);
-      
-      this.userService.addUser(request).subscribe({
-        next: (result) => {
-          console.log('Add user result:', result);
-          
-          if (result.isSuccess) {
-            this.loadUsers(); // Reload to get updated lists
-            this.closeAddUserModal();
-            alert('User added successfully!');
-          } else {
-            alert(`Error: ${result.error?.description || 'Unknown error occurred'}`);
+ onSubmitAddUser(): void {
+  if (this.addUserForm.valid) {
+    this.loading = true;
+    const request: CreateUserRequest = this.addUserForm.value;
+    
+    console.log('Adding user:', request);
+    
+    this.userService.addUser(request).subscribe({
+      next: (userData: UserResponse) => {
+        console.log('Add user result:', userData);
+        this.loading = false;
+        
+        // Add the new user to our local data immediately
+        const newUser: UserResponse = {
+          id: userData.id,
+          userName: userData.userName,
+          isDisabled: userData.isDisabled || false,
+          roles: userData.roles || request.roles || []
+        };
+        
+        this.allUsersData.push(newUser);
+        this.updateUserLists();
+        
+        this.closeAddUserModal();
+        alert('User added successfully!');
+      },
+      error: (error) => {
+        console.error('Error adding user:', error);
+        this.loading = false;
+        
+        // Handle different types of errors
+        let errorMessage = 'Error adding user. Please check your connection and try again.';
+        
+        if (error.error) {
+          if (error.error.description) {
+            errorMessage = error.error.description;
+          } else if (error.error.message) {
+            errorMessage = error.error.message;
+          } else if (typeof error.error === 'string') {
+            errorMessage = error.error;
           }
-          this.loading = false;
-        },
-        error: (error) => {
-          console.error('Error adding user:', error);
-          alert('Error adding user. Please check your connection and try again.');
-          this.loading = false;
+        } else if (error.message) {
+          errorMessage = error.message;
         }
-      });
-    } else {
-      console.log('Form is invalid:', this.addUserForm.errors);
-      Object.keys(this.addUserForm.controls).forEach(key => {
-        this.addUserForm.get(key)?.markAsTouched();
-      });
-    }
+        
+        alert(errorMessage);
+      }
+    });
+  } else {
+    console.log('Form is invalid:', this.addUserForm.errors);
+    Object.keys(this.addUserForm.controls).forEach(key => {
+      this.addUserForm.get(key)?.markAsTouched();
+    });
   }
+}
 
   toggleUserStatus(user: UserResponse): void {
     if (!user || !user.id) {
@@ -175,27 +183,27 @@ export class UserManagementComponent implements OnInit {
     }
 
     console.log('Toggling status for user:', user);
-    this.loading = true;
+    
+    // Show loading state for the specific action
+    const previousState = user.isDisabled;
     
     this.userService.toggleUserStatus(user.id).subscribe({
-      next: (result) => {
-        console.log('Toggle status result:', result);
+      next: () => {
+        console.log('User status toggled successfully');
         
-        if (result.isSuccess) {
-          // Reload users to get updated status
-          this.loadUsers();
-          
-          const action = user.isDisabled ? 'enabled' : 'banned';
-          alert(`User ${action} successfully!`);
-        } else {
-          alert(`Error: ${result.error?.description || 'Unknown error occurred'}`);
+        // Update the user status immediately in our local data
+        const userIndex = this.allUsersData.findIndex(u => u.id === user.id);
+        if (userIndex !== -1) {
+          this.allUsersData[userIndex].isDisabled = !previousState;
+          this.updateUserLists();
         }
-        this.loading = false;
+        
+        const action = previousState ? 'enabled' : 'banned';
+        alert(`User ${action} successfully!`);
       },
       error: (error) => {
         console.error('Error toggling user status:', error);
         alert('Error updating user status. Please check your connection and try again.');
-        this.loading = false;
       }
     });
   }
@@ -240,31 +248,42 @@ export class UserManagementComponent implements OnInit {
 
   onSubmitRoles(): void {
     if (this.roleForm.valid && this.selectedUser) {
+      const newRoleIds = this.roleForm.value.roleIds;
+      
+      console.log('Updating roles for user:', this.selectedUser.id);
+      console.log('New role IDs:', newRoleIds);
+
+      this.loading = true;
+
       const request: UserRoleRequest = {
         userId: this.selectedUser.id,
-        roleIds: this.roleForm.value.roleIds
+        roleIds: newRoleIds
       };
 
-      console.log('Updating roles:', request);
-      this.loading = true;
-      
-      this.userService.assignRolesToUser(request).subscribe({
-        next: (result) => {
-          console.log('Assign roles result:', result);
+      this.userService.updateUserRoles(request).subscribe({
+        next: () => {
+          console.log('User roles updated successfully');
           
-          if (result.isSuccess) {
-            this.loadUsers(); // Reload to get updated roles
-            this.closeRoleModal();
-            alert('Roles updated successfully!');
-          } else {
-            alert(`Error: ${result.error?.description || 'Unknown error occurred'}`);
+          // Update the user's roles in our local data
+          const newRoleNames = newRoleIds.map((id: string) => {
+            const role = this.roles.find(r => r.id === id);
+            return role ? role.name : '';
+          }).filter((name: string) => name !== '');
+
+          const userIndex = this.allUsersData.findIndex(u => u.id === this.selectedUser!.id);
+          if (userIndex !== -1) {
+            this.allUsersData[userIndex].roles = newRoleNames;
+            this.updateUserLists();
           }
+
+          this.closeRoleModal();
           this.loading = false;
+          alert('Roles updated successfully!');
         },
         error: (error) => {
-          console.error('Error updating roles:', error);
-          alert('Error updating user roles. Please check your connection and try again.');
+          console.error('Error updating user roles:', error);
           this.loading = false;
+          alert('Error updating user roles. Please check your connection and try again.');
         }
       });
     } else {
@@ -275,7 +294,8 @@ export class UserManagementComponent implements OnInit {
     }
   }
 
-  confirmDelete(user: UserResponse): void {
+  // Fixed: Remove duplicate delete functionality, only keep ban/unban
+  confirmBanUser(user: UserResponse): void {
     if (!user || !user.id) {
       console.error('Invalid user data:', user);
       alert('Invalid user data. Please refresh the page and try again.');
@@ -293,10 +313,22 @@ export class UserManagementComponent implements OnInit {
 
   deleteUser(): void {
     if (this.userToDelete) {
-      // Since there's no delete endpoint, we'll ban the user instead
       this.toggleUserStatus(this.userToDelete);
       this.cancelDelete();
     }
+  }
+
+  // New method for user profile navigation
+  viewUserProfile(user: UserResponse): void {
+    if (!user || !user.id) {
+      console.error('Invalid user data:', user);
+      alert('Invalid user data. Please refresh the page and try again.');
+      return;
+    }
+
+    // TODO: Navigate to user profile component
+    console.log('Navigate to user profile:', user);
+    alert(`User profile feature will be implemented soon for user: ${user.userName}`);
   }
 
   get filteredUsers(): UserResponse[] {
@@ -311,11 +343,9 @@ export class UserManagementComponent implements OnInit {
     return userList.filter(user => {
       if (!user) return false;
       
-      // Search in username
       const usernameMatch = user.userName && 
         user.userName.toLowerCase().includes(searchTermLower);
       
-      // Search in roles
       const rolesMatch = user.roles && Array.isArray(user.roles) &&
         user.roles.some(role => role && role.toLowerCase().includes(searchTermLower));
       
@@ -381,25 +411,21 @@ export class UserManagementComponent implements OnInit {
     console.log('Updated role IDs:', roleIds);
   }
 
-  // Helper method to track items in ngFor for better performance
   trackByUserId(index: number, user: UserResponse): string {
     return user?.id || index.toString();
   }
 
-  // Helper method to safely get user avatar letter
   getUserAvatarLetter(user: UserResponse): string {
     if (!user || !user.userName) return '?';
     return user.userName.charAt(0).toUpperCase();
   }
 
-  // Method to refresh data
   refreshData(): void {
     console.log('Refreshing data...');
     this.loadUsers();
     this.loadRoles();
   }
 
-  // Helper method to check if a role is assigned to the current user
   isRoleAssigned(roleId: string): boolean {
     if (!this.selectedUser || !this.selectedUser.roles) return false;
     
