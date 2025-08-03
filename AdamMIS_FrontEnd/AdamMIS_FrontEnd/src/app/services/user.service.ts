@@ -7,12 +7,16 @@ import { Observable } from 'rxjs';
 export interface CreateUserRequest {
   userName: string;
   password: string;
+  departmentName: string;  // Changed from department
+  title: string;
   roles: string[];
 }
-
 export interface UserResponse {
   id: string;
   userName: string;
+  departmentName: string;
+  title: string;
+  email: string;
   isDisabled: boolean;
   roles: string[];
 }
@@ -35,12 +39,32 @@ export interface ApiResult<T> {
     description: string;
   };
 }
+export interface UpdateUserProfileRequest {
+  userName?: string;
+  title?: string;
+  department?: string;
+  email?: string;
+}
+export interface UserChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
 
+export interface AdminResetPasswordRequest {
+  userId: string;
+  newPassword: string;
+}
 export interface RolesResponse {
   id: string;
   name: string;
   isDeleted: boolean;
   permissionCount?: number; // Add this optional field
+}
+
+export interface DepartmentResponse {
+  id: string;
+  name: string;
 }
 
 // ========== SERVICE ========== //
@@ -70,9 +94,10 @@ export class UserService {
   }
 
   /** POST new user */
-addUser(request: CreateUserRequest): Observable<UserResponse> {
-  return this.http.post<UserResponse>(`${this.baseUrl}`, request);
-}
+  addUser(request: CreateUserRequest): Observable<UserResponse> {
+    return this.http.post<UserResponse>(`${this.baseUrl}`, request);
+  }
+
   /** PUT toggle ban/unban status */
   toggleUserStatus(userId: string): Observable<void> {
     return this.http.put<void>(`${this.baseUrl}/${userId}`, {});
@@ -87,4 +112,23 @@ addUser(request: CreateUserRequest): Observable<UserResponse> {
     // Always fetch roles without including disabled ones
     return this.http.get<RolesResponse[]>(`${this.baseRoleUrl}/Roles`);
   }
+
+getUserProfile(userId: string): Observable<UserResponse> {
+  return this.http.get<UserResponse>(`${this.baseUrl}/${userId}`);
+}
+
+updateUserProfile(userId: string, request: UpdateUserProfileRequest): Observable<UserResponse> {
+  return this.http.put<UserResponse>(`${this.baseUrl}/update-profile/${userId}`, request);
+}
+
+changePassword(request: UserChangePasswordRequest): Observable<void> {
+  return this.http.post<void>(`${this.baseUrl}/change-password`, request);
+}
+adminResetPassword(request: AdminResetPasswordRequest): Observable<void> {
+  return this.http.post<void>(`${this.baseUrl}/reset-password`, request);
+}
+  // Add this if you create the departments endpoint
+getDepartments(): Observable<string[]> {
+  return this.http.get<string[]>(`${this.baseUrl}/departments`);
+}
 }

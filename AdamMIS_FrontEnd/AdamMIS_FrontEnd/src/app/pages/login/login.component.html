@@ -1,39 +1,72 @@
-<div class="parent">
-    <div class="main">  	
-        <input type="checkbox" id="chk" aria-hidden="true">
-    
-            <div class="signup">
-                <form (ngSubmit)="onRegister()" #registerForm="ngForm">
-                    <label for="chk" aria-hidden="true">Sign up</label>
-                    <input type="text" 
-                           name="userName" 
-                           placeholder="User name" 
-                           [(ngModel)]="registerModel.userName" 
-                           required>
-                    <input type="password" 
-                           name="password" 
-                           placeholder="Password" 
-                           [(ngModel)]="registerModel.password" 
-                           required>
-                    <button type="submit">Sign up</button>
-                </form>
-            </div>
-    
-            <div class="login">
-                <form (ngSubmit)="onLogin()" #loginForm="ngForm">
-                    <label for="chk" aria-hidden="true">Login</label>
-                    <input type="text" 
-                           placeholder="Username" 
-                           [(ngModel)]="model.userName" 
-                           name="username" 
-                           required />
-                    <input type="password" 
-                           placeholder="Password" 
-                           [(ngModel)]="model.password" 
-                           name="password" 
-                           required />
-                    <button type="submit">Login</button>
-                </form>
-            </div>
+<div class="login-container">
+  <!-- Main Header spanning both columns -->
+  <div class="main-header">
+    <h1 class="main-title">Welcome To AdamMIS</h1>
+    <p class="main-subtitle">Please sign in to your account</p>
+  </div>
+
+  <!-- Left side - Logo and Hospital Info -->
+  <div class="logo-container">
+    <div class="hospital-logo">
+      <!-- Replace this with your actual hospital logo -->
+      <img src="assets/images/AdamLogo.png" alt="Hospital Logo" class="logo-image" />
+      <!-- Or use the medical cross icon if no logo available -->
+
     </div>
+    <h2 class="hospital-name">{{ hospitalName }}</h2>
+    <p class="hospital-subtitle">Hospital Management System</p>
+  </div>
+
+  <!-- Right side - Login Form -->
+  <div class="form-section">
+    <div class="error-message" *ngIf="errorMessage">
+      {{ errorMessage }}
+    </div>
+
+    <div class="success-message" *ngIf="successMessage">
+      {{ successMessage }}
+    </div>
+
+    <form (ngSubmit)="onLogin()" #loginForm="ngForm">
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username" 
+          class="form-input" 
+          placeholder="Enter your username"
+          [(ngModel)]="model.userName"
+          required
+          #username="ngModel"
+        >
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          class="form-input" 
+          placeholder="Enter your password"
+          [(ngModel)]="model.password"
+          required
+          #password="ngModel"
+        >
+      </div>
+
+      <button 
+        type="submit" 
+        class="login-button" 
+        [disabled]="isLoading || loginForm.invalid"
+      >
+        {{ isLoading ? 'Signing In...' : 'Sign In' }}
+      </button>
+    </form>
+
+    <div class="forgot-password">
+      <a href="#" (click)="onForgotPassword($event)">Forgot your password?</a>
+    </div>
+  </div>
 </div>

@@ -1,0 +1,288 @@
+<div class="user-profile-container">
+  <!-- Header -->
+  <div class="profile-header">
+
+    <h1 class="page-title">
+      {{ isOwnProfile ? 'My Profile' : 'User Profile' }}
+    </h1>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading profile...</p>
+  </div>
+
+  <!-- Error/Success Messages -->
+  <div *ngIf="error" class="alert alert-error">
+    <i class="fas fa-exclamation-circle"></i>
+    {{ error }}
+    <button class="close-btn" (click)="clearMessages()">×</button>
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success">
+    <i class="fas fa-check-circle"></i>
+    {{ successMessage }}
+    <button class="close-btn" (click)="clearMessages()">×</button>
+  </div>
+
+  <!-- Profile Content -->
+  <div *ngIf="user && !loading" class="profile-content">
+    
+    <!-- Profile Information Card -->
+    <div class="profile-card">
+      <div class="card-header">
+        <h2>Profile Information</h2>
+        <div class="header-actions">
+          <span *ngIf="user.isDisabled" class="status-badge disabled">Disabled</span>
+          <span *ngIf="!user.isDisabled" class="status-badge active">Active</span>
+          <button 
+            *ngIf="isOwnProfile || isAdmin" 
+            class="edit-btn"
+            (click)="toggleEdit()"
+            [disabled]="loading">
+            <i class="fas fa-edit"></i>
+            {{ isEditing ? 'Cancel' : 'Edit' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="card-content">
+        <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()">
+          
+          <!-- User ID (Read-only) -->
+          <div class="form-group">
+            <label>User ID</label>
+            <input type="text" [value]="user.id" readonly class="form-control readonly">
+          </div>
+
+          <!-- Username -->
+          <div class="form-group">
+            <label for="userName">Username *</label>
+            <input 
+              type="text" 
+              id="userName"
+              formControlName="userName"
+              class="form-control"
+              [readonly]="!isEditing"
+              [class.readonly]="!isEditing">
+            <div *ngIf="profileForm.get('userName')?.invalid && profileForm.get('userName')?.touched" class="field-error">
+              <span *ngIf="profileForm.get('userName')?.errors?.['required']">Username is required</span>
+              <span *ngIf="profileForm.get('userName')?.errors?.['minlength']">Username must be at least 3 characters</span>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email">Email *</label>
+            <input 
+              type="email" 
+              id="email"
+              formControlName="email"
+              class="form-control"
+              [readonly]="!isEditing"
+              [class.readonly]="!isEditing">
+            <div *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched" class="field-error">
+              <span *ngIf="profileForm.get('email')?.errors?.['required']">Email is required</span>
+              <span *ngIf="profileForm.get('email')?.errors?.['email']">Please enter a valid email</span>
+            </div>
+          </div>
+
+          <!-- Title -->
+          <div class="form-group">
+            <label for="title">Title</label>
+            <input 
+              type="text" 
+              id="title"
+              formControlName="title"
+              class="form-control"
+              [readonly]="!isEditing"
+              [class.readonly]="!isEditing">
+          </div>
+
+          <!-- Department -->
+          <div class="form-group">
+            <label for="department">Department</label>
+            <select 
+              *ngIf="isEditing" 
+              id="department"
+              formControlName="department"
+              class="form-control">
+              <option value="">Select Department</option>
+              <option *ngFor="let dept of departments" [value]="dept">{{ dept }}</option>
+            </select>
+            <input 
+              *ngIf="!isEditing"
+              type="text" 
+              [value]="user.departmentName || 'Not assigned'"
+              readonly 
+              class="form-control readonly">
+          </div>
+
+          <!-- Roles (Read-only) -->
+          <div class="form-group">
+            <label>Roles</label>
+            <div class="roles-container">
+              <span *ngFor="let role of user.roles" class="role-badge">{{ role }}</span>
+              <span *ngIf="user.roles.length === 0" class="no-roles">No roles assigned</span>
+            </div>
+          </div>
+
+          <!-- Save Button -->
+          <div *ngIf="isEditing" class="form-actions">
+            <button 
+              type="submit" 
+              class="btn btn-primary"
+              [disabled]="profileForm.invalid || loading">
+              <i class="fas fa-save"></i>
+              Save Changes
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+    <!-- Password Management Card -->
+    <div class="profile-card">
+      <div class="card-header">
+        <h2>Password Management</h2>
+      </div>
+
+      <div class="card-content">
+        
+        <!-- User Change Password -->
+        <div *ngIf="isOwnProfile" class="password-section">
+          <button 
+            class="btn btn-secondary"
+            (click)="togglePasswordChange()"
+            [disabled]="loading">
+            <i class="fas fa-key"></i>
+            {{ isChangingPassword ? 'Cancel' : 'Change Password' }}
+          </button>
+
+          <div *ngIf="isChangingPassword" class="password-form">
+            <form [formGroup]="passwordForm" (ngSubmit)="onChangePassword()">
+              
+              <div class="form-group">
+                <label for="oldPassword">Current Password *</label>
+                <input 
+                  type="password" 
+                  id="oldPassword"
+                  formControlName="oldPassword"
+                  class="form-control">
+                <div *ngIf="passwordForm.get('oldPassword')?.invalid && passwordForm.get('oldPassword')?.touched" class="field-error">
+                  <span *ngIf="passwordForm.get('oldPassword')?.errors?.['required']">Current password is required</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="newPassword">New Password *</label>
+                <input 
+                  type="password" 
+                  id="newPassword"
+                  formControlName="newPassword"
+                  class="form-control">
+                <div *ngIf="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched" class="field-error">
+                  <span *ngIf="passwordForm.get('newPassword')?.errors?.['required']">New password is required</span>
+                  <span *ngIf="passwordForm.get('newPassword')?.errors?.['minlength']">Password must be at least 6 characters</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="confirmNewPassword">Confirm New Password *</label>
+                <input 
+                  type="password" 
+                  id="confirmNewPassword"
+                  formControlName="confirmNewPassword"
+                  class="form-control">
+                <div *ngIf="passwordForm.get('confirmNewPassword')?.invalid && passwordForm.get('confirmNewPassword')?.touched" class="field-error">
+                  <span *ngIf="passwordForm.get('confirmNewPassword')?.errors?.['required']">Please confirm your password</span>
+                </div>
+                <div *ngIf="passwordForm.errors?.['passwordMismatch'] && passwordForm.get('confirmNewPassword')?.touched" class="field-error">
+                  <span>Passwords do not match</span>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button 
+                  type="submit" 
+                  class="btn btn-primary"
+                  [disabled]="passwordForm.invalid || loading">
+                  <i class="fas fa-save"></i>
+                  Change Password
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+
+        <!-- Admin Reset Password -->
+        <div *ngIf="isAdmin && !isOwnProfile" class="password-section">
+          <button 
+            class="btn btn-danger"
+            (click)="toggleAdminPasswordReset()"
+            [disabled]="loading">
+            <i class="fas fa-unlock-alt"></i>
+            {{ isAdminResettingPassword ? 'Cancel' : 'Reset Password' }}
+          </button>
+
+          <div *ngIf="isAdminResettingPassword" class="password-form">
+            <form [formGroup]="adminPasswordForm" (ngSubmit)="onAdminResetPassword()">
+              
+              <div class="form-group">
+                <label for="adminNewPassword">New Password *</label>
+                <input 
+                  type="password" 
+                  id="adminNewPassword"
+                  formControlName="newPassword"
+                  class="form-control">
+                <div *ngIf="adminPasswordForm.get('newPassword')?.invalid && adminPasswordForm.get('newPassword')?.touched" class="field-error">
+                  <span *ngIf="adminPasswordForm.get('newPassword')?.errors?.['required']">New password is required</span>
+                  <span *ngIf="adminPasswordForm.get('newPassword')?.errors?.['minlength']">Password must be at least 6 characters</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="adminConfirmPassword">Confirm New Password *</label>
+                <input 
+                  type="password" 
+                  id="adminConfirmPassword"
+                  formControlName="confirmNewPassword"
+                  class="form-control">
+                <div *ngIf="adminPasswordForm.get('confirmNewPassword')?.invalid && adminPasswordForm.get('confirmNewPassword')?.touched" class="field-error">
+                  <span *ngIf="adminPasswordForm.get('confirmNewPassword')?.errors?.['required']">Please confirm the password</span>
+                </div>
+                <div *ngIf="adminPasswordForm.errors?.['passwordMismatch'] && adminPasswordForm.get('confirmNewPassword')?.touched" class="field-error">
+                  <span>Passwords do not match</span>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button 
+                  type="submit" 
+                  class="btn btn-danger"
+                  [disabled]="adminPasswordForm.invalid || loading">
+                  <i class="fas fa-unlock-alt"></i>
+                  Reset Password
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+
+        <!-- No Password Options -->
+        <div *ngIf="!isOwnProfile && !isAdmin" class="no-password-access">
+          <p class="text-muted">
+            <i class="fas fa-lock"></i>
+            You don't have permission to change this user's password.
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>

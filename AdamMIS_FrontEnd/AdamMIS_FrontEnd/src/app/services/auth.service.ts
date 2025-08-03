@@ -61,11 +61,35 @@ getUserName(): string {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
+      console.log('No token found in localStorage');
       return '';
     }
-
     const payload = this.decodeJwtPayload(token);
-    return payload?.userName || payload?.name || payload?.unique_name || '';
+    // Based on your backend claims structure:
+    // ClaimTypes.Name should map to 'name' or sometimes 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'
+    const possibleNameClaims = [
+      payload?.name,
+      payload?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'],
+      payload?.userName,
+      payload?.username,
+      payload?.UserName
+    ];
+    
+    console.log('Checking name claims:');
+    possibleNameClaims.forEach((claim, index) => {
+      console.log(`Claim ${index}:`, claim);
+    });
+    
+    // Find the first non-empty, non-GUID value
+    for (const claim of possibleNameClaims) {
+      if (claim && typeof claim === 'string' && claim.trim() !== '') {
+
+        
+        return claim;
+      }
+    }
+    
+    return '';
   } catch (error) {
     console.error('Error getting user name:', error);
     return '';

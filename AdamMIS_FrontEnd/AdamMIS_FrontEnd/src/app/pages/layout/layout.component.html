@@ -5,33 +5,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AdamMIS - Admin Dashboard</title>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
 <body>
     <!-- Header -->
     <header class="header">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-            <button class="menu-toggle" (click)="toggleSidebar()">☰</button>
+        <!-- Left side - App title and menu toggle -->
+        <div class="header-left">
+            <button class="menu-toggle" (click)="toggleNavigation()">
+                <div class="custom-hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
             <h1>AdamMIS</h1>
         </div>
-        <div class="header-right">
-            <button class="logout-btn" (click)="logout()">
-                <span>🚪</span>
-                Logout
-            </button>
-        </div>
+
+        <!-- Right side - Enhanced navigation -->
+        <nav class="top-navigation">
+            <!-- User Menu Dropdown - Welcome section as clickable button -->
+            <div class="user-menu" #userMenuRef>
+                <button 
+                    class="welcome-section-button" 
+                    (click)="toggleUserMenu()"
+                    [class.active]="showUserMenu">
+                    <div class="welcome-section">
+                        <span class="welcome-text">Welcome,</span>
+                        <span class="user-name-display">{{ currentUserName }}</span>
+                    </div>
+                    <i class="fas fa-chevron-down" [class.rotated]="showUserMenu"></i>
+                </button>
+                
+                <!-- Dropdown Menu -->
+                <div class="user-dropdown" *ngIf="showUserMenu" [@slideIn]>
+                    <!-- User Info -->
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="user-details">
+                            <div class="name">{{ currentUserName }}</div>
+                            <div class="roles">{{ currentUserRoles.join(', ') }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dropdown-divider"></div>
+                    
+                    <!-- Navigation Items -->
+                    <div class="dropdown-items">
+                        <!-- My Profile - Available to all authenticated users -->
+                        <a 
+                            routerLink="/profile" 
+                            class="dropdown-item"
+                            (click)="closeUserMenu()">
+                            <i class="fas fa-user-cog"></i>
+                            <span>My Profile</span>
+                        </a>
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        <!-- Logout -->
+                        <button 
+                            class="dropdown-item logout" 
+                            (click)="logout()">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
     </header>
 
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar" [class.collapsed]="isNavCollapsed">
-        <!-- Toggle Button -->
-        <button class="nav-toggle-btn" (click)="toggleNavigation()">
-            <span class="toggle-icon" [class.rotated]="isNavCollapsed">◀</span>
-        </button>
+
 
         <div class="nav-item" *ngFor="let item of menuItems">
-            <!-- Main menu item -->
-            <a [class.active]="isActiveRoute(item.route)" 
+            <!-- Main menu item with permission check -->
+            <a *ngIf="!item.permission || hasPermission(item.permission)"
+               [class.active]="isActiveRoute(item.route)" 
                [class.has-submenu]="item.hasSubmenu"
                [class.expanded]="expandedMenus[item.icon]"
                [title]="item.label"
@@ -41,13 +97,13 @@
                 <i *ngIf="item.hasSubmenu" class="submenu-arrow" [class.rotated]="expandedMenus[item.icon]">▼</i>
             </a>
             
-            <!-- Submenu items -->
-            <div *ngIf="item.hasSubmenu" 
+            <!-- Submenu items (only show if main item has permission) -->
+            <div *ngIf="item.hasSubmenu && (!item.permission || hasPermission(item.permission))" 
                  class="submenu"
                  [class.expanded]="expandedMenus[item.icon]"
                  [class.collapsed-nav]="isNavCollapsed">
                 <div class="submenu-item" *ngFor="let subItem of item.submenuItems">
-                    <a *ngIf="subItem.label !== 'Report Management' || hasPermission('View Report Manager')"
+                    <a *ngIf="!subItem.permission || hasPermission(subItem.permission)"
                         [class.active]="isActiveRoute(subItem.route)" 
                         [title]="subItem.label"
                         (click)="navigateTo(subItem.route)">

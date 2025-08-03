@@ -32,7 +32,7 @@
     <i class="icon-search"></i>
     <input 
       type="text" 
-      placeholder="Search users by name or role..."
+      placeholder="Search users by name, department, title, or role..."
       [(ngModel)]="searchTerm"
       class="search-input">
   </div>
@@ -50,6 +50,8 @@
     <thead>
       <tr>
         <th>Username</th>
+        <th>Department</th>
+        <th>Title</th>
         <th>Status</th>
         <th>Roles</th>
         <th>Actions</th>
@@ -65,6 +67,12 @@
             <span class="username">{{ user.userName }}</span>
             <span class="user-id">ID: {{ user.id }}</span>
           </div>
+        </td>
+        <td>
+          <span class="department">{{ user.departmentName || 'N/A' }}</span>
+        </td>
+        <td>
+          <span class="title">{{ user.title || 'N/A' }}</span>
         </td>
         <td>
           <span class="status-badge" [ngClass]="getStatusClass(user)">
@@ -90,12 +98,14 @@
             </button>
             
             <!-- User Profile Button -->
-            <button 
-              class="btn-action btn-profile" 
-              (click)="viewUserProfile(user)"
-              title="View Profile">
-              View Profile
-            </button>
+  <button 
+    class="btn btn-outline-info btn-sm action-btn"
+    [routerLink]="['/admin-management/users', user.id, 'profile']"
+    title="View Profile"
+    matTooltip="View User Profile">
+    <i class="fas fa-user"></i>
+    <span class="btn-text">Profile</span>
+  </button>
             
             <!-- Ban/Unban Button -->
             <button 
@@ -156,6 +166,34 @@
         <div *ngIf="addUserForm.get('password')?.invalid && addUserForm.get('password')?.touched" 
              class="error-message">
           Password is required (minimum 6 characters)
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="departmentName">Department</label>
+        <input 
+          type="text" 
+          id="departmentName"
+          formControlName="departmentName"
+          class="form-input"
+          placeholder="Enter department">
+        <div *ngIf="addUserForm.get('departmentName')?.invalid && addUserForm.get('departmentName')?.touched" 
+             class="error-message">
+          Department is required
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="title">Title</label>
+        <input 
+          type="text" 
+          id="title"
+          formControlName="title"
+          class="form-input"
+          placeholder="Enter job title">
+        <div *ngIf="addUserForm.get('title')?.invalid && addUserForm.get('title')?.touched" 
+             class="error-message">
+          Title is required
         </div>
       </div>
       

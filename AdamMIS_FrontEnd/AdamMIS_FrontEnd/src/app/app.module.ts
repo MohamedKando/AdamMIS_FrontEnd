@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+
 import { CommonModule } from '@angular/common';
 import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
 
@@ -19,6 +20,9 @@ import {AdminManagementComponent} from './pages/admin-management/admin-managemen
 import {UserManagementComponent} from './pages/admin-management/user-management/user-management.component';
 import {RoleManagementComponent} from './pages/admin-management/role-management/role-management.component';
 
+import { AuthGuard } from './guards/auth.guard';
+import { UserProfileComponent } from './pages/user-profile/user-profile.component';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -31,7 +35,8 @@ import {RoleManagementComponent} from './pages/admin-management/role-management/
     ReportViewingComponent,
     AdminManagementComponent,
     UserManagementComponent,
-    RoleManagementComponent
+    RoleManagementComponent,
+    UserProfileComponent
   ],
   imports: [
     BrowserModule,
@@ -46,8 +51,10 @@ import {RoleManagementComponent} from './pages/admin-management/role-management/
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,
-      multi: true 
-    }
+      multi: true ,
+      
+    },
+    AuthGuard
   ],
   bootstrap: [AppComponent]
 })

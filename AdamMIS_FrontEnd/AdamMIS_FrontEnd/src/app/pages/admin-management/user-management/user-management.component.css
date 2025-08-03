@@ -647,4 +647,111 @@
     flex-direction: column;
     align-items: flex-start;
   }
+  /* Add these styles to your user-management.component.css */
+
+.actions-cell {
+  white-space: nowrap;
+  padding: 8px;
+}
+
+.action-btn {
+  margin: 0 2px;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn i {
+  font-size: 12px;
+}
+
+.btn-text {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Specific button colors */
+.btn-outline-info {
+  color: #17a2b8;
+  border-color: #17a2b8;
+}
+
+.btn-outline-info:hover {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-outline-primary {
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-outline-primary:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-outline-warning {
+  color: #ffc107;
+  border-color: #ffc107;
+}
+
+.btn-outline-warning:hover {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.btn-outline-success {
+  color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-outline-success:hover {
+  background-color: #28a745;
+  color: white;
+}
+
+/* Responsive design for action buttons */
+@media (max-width: 768px) {
+  .btn-text {
+    display: none;
+  }
+  
+  .action-btn {
+    padding: 6px 8px;
+    margin: 0 1px;
+  }
+}
+
+/* Table cell styling */
+.users-table td {
+  vertical-align: middle;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-badge.disabled {
+  background-color: #f8d7da;
+  color: #721c24;
+}
 }

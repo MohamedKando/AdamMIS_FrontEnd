@@ -27,20 +27,23 @@ export class UserManagementComponent implements OnInit {
   loading = false;
   searchTerm = '';
 
-  constructor(
-    private userService: UserService,
-    private fb: FormBuilder
-  ) {
-    this.addUserForm = this.fb.group({
-      userName: ['', [Validators.required, Validators.minLength(3)]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      roles: [[], Validators.required]
-    });
+constructor(
+  private userService: UserService,
+  private fb: FormBuilder
+) {
+  this.addUserForm = this.fb.group({
+    userName: ['', [Validators.required, Validators.minLength(3)]],
+    password: ['', [Validators.required, Validators.minLength(6)]],
+    departmentName: ['', Validators.required], // Changed to match interface
+    title: ['', Validators.nullValidator], // Fixed validator
+    email: ['', [Validators.email,  Validators.nullValidator]],
+    roles: [[], Validators.required]
+  });
 
-    this.roleForm = this.fb.group({
-      roleIds: [[], Validators.required]
-    });
-  }
+  this.roleForm = this.fb.group({
+    roleIds: [[], Validators.required]
+  });
+}
 
   ngOnInit(): void {
     this.loadUsers();
@@ -105,15 +108,17 @@ export class UserManagementComponent implements OnInit {
     this.activeTab = tab;
   }
 
-  openAddUserModal(): void {
-    this.showAddUserModal = true;
-    this.addUserForm.reset();
-    this.addUserForm.patchValue({
-      userName: '',
-      password: '',
-      roles: []
-    });
-  }
+openAddUserModal(): void {
+  this.showAddUserModal = true;
+  this.addUserForm.reset();
+  this.addUserForm.patchValue({
+    userName: '',
+    password: '',
+    departmentName: '', // Changed to match interface
+    title: '',
+    roles: []
+  });
+}
 
   closeAddUserModal(): void {
     this.showAddUserModal = false;
@@ -136,6 +141,9 @@ export class UserManagementComponent implements OnInit {
           id: userData.id,
           userName: userData.userName,
           isDisabled: userData.isDisabled || false,
+          departmentName: userData.departmentName,
+          email: userData.email || '', // Ensure email is set
+          title: userData.title,
           roles: userData.roles || request.roles || []
         };
         
@@ -331,27 +339,33 @@ export class UserManagementComponent implements OnInit {
     alert(`User profile feature will be implemented soon for user: ${user.userName}`);
   }
 
-  get filteredUsers(): UserResponse[] {
-    const userList = this.activeTab === 'all' ? this.users : this.bannedUsers;
-    
-    if (!this.searchTerm.trim()) {
-      return userList;
-    }
-    
-    const searchTermLower = this.searchTerm.toLowerCase().trim();
-    
-    return userList.filter(user => {
-      if (!user) return false;
-      
-      const usernameMatch = user.userName && 
-        user.userName.toLowerCase().includes(searchTermLower);
-      
-      const rolesMatch = user.roles && Array.isArray(user.roles) &&
-        user.roles.some(role => role && role.toLowerCase().includes(searchTermLower));
-      
-      return usernameMatch || rolesMatch;
-    });
+get filteredUsers(): UserResponse[] {
+  const userList = this.activeTab === 'all' ? this.users : this.bannedUsers;
+  
+  if (!this.searchTerm.trim()) {
+    return userList;
   }
+  
+  const searchTermLower = this.searchTerm.toLowerCase().trim();
+  
+  return userList.filter(user => {
+    if (!user) return false;
+    
+    const usernameMatch = user.userName && 
+      user.userName.toLowerCase().includes(searchTermLower);
+    
+    const departmentMatch = user.departmentName &&
+      user.departmentName.toLowerCase().includes(searchTermLower);
+    
+    const titleMatch = user.title &&
+      user.title.toLowerCase().includes(searchTermLower);
+    
+    const rolesMatch = user.roles && Array.isArray(user.roles) &&
+      user.roles.some(role => role && role.toLowerCase().includes(searchTermLower));
+    
+    return usernameMatch || departmentMatch || titleMatch || rolesMatch;
+  });
+}
 
   getRoleNames(user: UserResponse): string {
     if (!user || !user.roles || !Array.isArray(user.roles) || user.roles.length === 0) {

@@ -10,26 +10,22 @@ import { UnauthorizedComponent } from './pages/unauthorized/unauthorized.compone
 import { AdminManagementComponent } from './pages/admin-management/admin-management.component';
 import {UserManagementComponent} from './pages/admin-management/user-management/user-management.component';
 import {RoleManagementComponent} from './pages/admin-management/role-management/role-management.component';
-
-// Import Guards
-
+import { UserProfileComponent } from './pages/user-profile/user-profile.component';
+import { AuthGuard } from './guards/auth.guard';
 import { PermissionGuard } from './guards/permission.guard';
 
-
 const routes: Routes = [
-   { path: 'login', component: LoginComponent },
+  { path: 'login', component: LoginComponent },
   { path: 'unauthorized', component: UnauthorizedComponent },
-  {
-    path: 'login',
-    component: LoginComponent
-  },
+  
   {
     path: '',
     component: LayoutComponent,
     children: [
       {
         path: 'dashboard',
-        component: DashboardComponent
+        component: DashboardComponent,
+        canActivate: [AuthGuard]
       },
       {
         path: 'dms-report',
@@ -38,12 +34,13 @@ const routes: Routes = [
           {
             path: 'management',
             component: ReportManagementComponent,
-            canActivate: [ PermissionGuard],
+            canActivate: [AuthGuard, PermissionGuard],
             data: { permission: 'View Report Manager' } 
           },
           {
             path: 'viewing',
-            component: ReportViewingComponent
+            component: ReportViewingComponent,
+            canActivate: [AuthGuard]
           },
           {
             path: '',
@@ -53,24 +50,40 @@ const routes: Routes = [
         ]
       },
       {
-    path: 'admin-management',
-    component: AdminManagementComponent,
-    children: [
-      {
-        path: '',
-        redirectTo: 'user-management',
-        pathMatch: 'full'
+        path: 'admin-management',
+        component: AdminManagementComponent,
+        canActivate: [AuthGuard, PermissionGuard],
+       // Add appropriate permission
+        children: [
+          {
+            path: '',
+            redirectTo: 'user-management',
+            pathMatch: 'full'
+          },
+          {
+            path: 'user-management',
+            component: UserManagementComponent,
+            //canActivate: [AuthGuard]
+          },
+          {
+            path: 'role-management',
+            component: RoleManagementComponent,
+            canActivate: [AuthGuard]
+          },
+          // Add profile route inside admin-management for viewing other users
+          {
+            path: 'users/:id/profile',
+            component: UserProfileComponent,
+            canActivate: [AuthGuard]
+          }
+        ]
       },
+      // Add profile route for current user
       {
-        path: 'user-management',
-        component: UserManagementComponent
+        path: 'profile',
+        component: UserProfileComponent,
+        canActivate: [AuthGuard]
       },
-      {
-        path: 'role-management',
-        component: RoleManagementComponent
-      }
-    ]
-  },
       {
         path: '',
         redirectTo: 'dashboard',
