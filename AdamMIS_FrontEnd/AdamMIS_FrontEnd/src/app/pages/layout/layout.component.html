@@ -7,6 +7,77 @@
     <title>AdamMIS - Admin Dashboard</title>
     <!-- FontAwesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Add these styles for the user photo */
+        .user-photo {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-right: 10px;
+        }
+
+        .user-photo-large {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .user-avatar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .welcome-section-button {
+            display: flex;
+            align-items: center;
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
+        }
+
+        .welcome-section-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .welcome-section-button.active {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .user-details {
+            margin-left: 12px;
+        }
+
+        .user-details .name {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .user-details .roles {
+            font-size: 12px;
+            color: #666;
+            text-transform: capitalize;
+        }
+    </style>
 </head>
 
 <body>
@@ -32,6 +103,13 @@
                     class="welcome-section-button" 
                     (click)="toggleUserMenu()"
                     [class.active]="showUserMenu">
+                    <!-- User Photo -->
+                    <img 
+                        [src]="currentUserPhoto" 
+                        [alt]="currentUserName + ' photo'"
+                        class="user-photo"
+                        (error)="onImageError($event)">
+                    
                     <div class="welcome-section">
                         <span class="welcome-text">Welcome,</span>
                         <span class="user-name-display">{{ currentUserName }}</span>
@@ -44,7 +122,12 @@
                     <!-- User Info -->
                     <div class="user-info">
                         <div class="user-avatar">
-                            <i class="fas fa-user-circle"></i>
+                            <!-- Larger photo in dropdown -->
+                            <img 
+                                [src]="currentUserPhoto" 
+                                [alt]="currentUserName + ' photo'"
+                                class="user-photo-large"
+                                (error)="onImageError($event)">
                         </div>
                         <div class="user-details">
                             <div class="name">{{ currentUserName }}</div>
@@ -82,8 +165,6 @@
 
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar" [class.collapsed]="isNavCollapsed">
-
-
         <div class="nav-item" *ngFor="let item of menuItems">
             <!-- Main menu item with permission check -->
             <a *ngIf="!item.permission || hasPermission(item.permission)"

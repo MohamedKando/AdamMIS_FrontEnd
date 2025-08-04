@@ -1,6 +1,7 @@
-import { Component, OnInit, HostListener, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ElementRef, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { UserService } from '../../services/user.service'; // Add this import
 
 interface SubmenuItem {
   label: string;
@@ -23,7 +24,7 @@ interface MenuItem {
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.css']
 })
-export class LayoutComponent implements OnInit {
+export class LayoutComponent implements OnInit, OnDestroy {
   
   @ViewChild('userMenuRef', { static: false }) userMenuRef!: ElementRef;
 
@@ -34,7 +35,10 @@ export class LayoutComponent implements OnInit {
   showUserMenu = false;
   currentUserName = '';
   currentUserRoles: string[] = [];
+  currentUserPhoto = ''; // Add this for user photo
   isAdmin = false;
+  
+  private photoCheckInterval: any; // For periodic photo updates
   
   // Track which menu items are expanded
   expandedMenus: { [key: string]: boolean } = {
@@ -87,16 +91,49 @@ export class LayoutComponent implements OnInit {
     }
   ];
   
-  constructor(private router: Router, private authService: AuthService) {}
+  constructor(
+    private router: Router, 
+    private authService: AuthService,
+    private userService: UserService // Add UserService injection
+  ) {}
 
   ngOnInit(): void {
     this.loadUserInfo();
-    // Also listen for route changes to refresh user info if needed
+    
+    // Listen for route changes and window focus to refresh user info
     this.router.events.subscribe(() => {
       if (this.authService.isLoggedIn()) {
         this.loadUserInfo();
       }
     });
+
+    // Refresh user photo when window gains focus (detects changes from other tabs/components)
+    window.addEventListener('focus', () => {
+      if (this.authService.isLoggedIn()) {
+        this.loadUserPhoto();
+      }
+    });
+
+    // Listen for visibility changes (when user switches tabs and comes back)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.authService.isLoggedIn()) {
+        this.loadUserPhoto();
+      }
+    });
+
+    // Set up periodic photo check (every 30 seconds) - optional
+    this.photoCheckInterval = setInterval(() => {
+      if (this.authService.isLoggedIn()) {
+        this.loadUserPhoto();
+      }
+    }, 30000);
+  }
+
+  ngOnDestroy(): void {
+    // Clean up interval
+    if (this.photoCheckInterval) {
+      clearInterval(this.photoCheckInterval);
+    }
   }
 
   // Close user menu when clicking outside
@@ -117,23 +154,56 @@ export class LayoutComponent implements OnInit {
   }
 
   // User information loading
-// User information loading
-loadUserInfo(): void {
-  console.log('Loading user info...');
-  
-  const userName = this.authService.getUserName();
-  console.log('Retrieved username from service:', userName);
-  
-  // Only set to 'User' if we actually have no username
-  this.currentUserName = userName || 'User';
-  this.currentUserRoles = this.authService.getUserRoles() || [];
-  this.isAdmin = this.authService.hasRole('Admin') || this.authService.hasRole('SuperAdmin');
-  
-  // Debug logs
-  console.log('Final currentUserName:', this.currentUserName);
-  console.log('User roles:', this.currentUserRoles);
-  console.log('Is admin:', this.isAdmin);
-}
+  loadUserInfo(): void {
+    console.log('Loading user info...');
+    
+    const userName = this.authService.getUserName();
+    console.log('Retrieved username from service:', userName);
+    
+    // Only set to 'User' if we actually have no username
+    this.currentUserName = userName || 'User';
+    this.currentUserRoles = this.authService.getUserRoles() || [];
+    this.isAdmin = this.authService.hasRole('Admin') || this.authService.hasRole('SuperAdmin');
+    
+    // Load user photo
+    this.loadUserPhoto();
+    
+    // Debug logs
+    console.log('Final currentUserName:', this.currentUserName);
+    console.log('User roles:', this.currentUserRoles);
+    console.log('Is admin:', this.isAdmin);
+  }
+
+  // Load user photo with cache busting
+  loadUserPhoto(): void {
+    const userId = this.authService.getUserId();
+    if (userId) {
+      this.userService.getUserProfile(userId).subscribe({
+        next: (user) => {
+          // Add timestamp to prevent caching issues
+          const photoUrl = this.userService.getPhotoUrl(user.photoPath);
+          this.currentUserPhoto = user.photoPath ? `${photoUrl}?t=${Date.now()}` : this.getDefaultPhotoUrl();
+        },
+        error: (err) => {
+          console.error('Error loading user photo:', err);
+          this.currentUserPhoto = this.getDefaultPhotoUrl();
+        }
+      });
+    } else {
+      this.currentUserPhoto = this.getDefaultPhotoUrl();
+    }
+  }
+
+  // Get default photo URL
+  getDefaultPhotoUrl(): string {
+    return this.userService.getPhotoUrl(null);
+  }
+
+  // Handle image load errors
+  onImageError(event: any): void {
+    const imgElement = event.target as HTMLImageElement;
+    imgElement.src = this.getDefaultPhotoUrl();
+  }
 
   // User menu methods
   toggleUserMenu(): void {
@@ -148,6 +218,13 @@ loadUserInfo(): void {
   navigateTo(route: string): void {
     this.router.navigate([route]);
     this.closeUserMenu(); // Close user menu when navigating
+    
+    // If navigating to profile, refresh photo after a short delay to catch any updates
+    if (route === '/profile') {
+      setTimeout(() => {
+        this.loadUserPhoto();
+      }, 1000);
+    }
   }
 
   isActiveRoute(route: string): boolean {

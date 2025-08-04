@@ -702,11 +702,19 @@ filterUserReportAssignments(): void {
     alert(`Assignment Details:\n\nUser: ${assignment.userName}\nReport: ${assignment.reportFileName}\nCategory: ${assignment.categoryName}\nAssigned: ${assignment.assignedAt}\nAssigned By: ${assignment.assignedBy}\nStatus: ${assignment.isActive ? 'Active' : 'Inactive'}`);
   }
 
-  viewReport(report: Report): void {
-    // TODO: Implement report viewing
-    console.log('View report:', report);
-    alert('Report viewing functionality will be implemented in next phase');
-  }
+viewReport(report: Report): void {
+  this.reportService.editReport(report.id).subscribe(
+    response => {
+      console.log('Report editor opened:', response.message);
+      // Optionally show a success message
+      alert('Report editor has been opened. Make your changes and save the file.');
+    },
+    error => {
+      console.error('Error opening report editor:', error);
+      alert('Could not open report editor. Please try again.');
+    }
+  );
+}
 
   async deleteReport(reportId: number): Promise<void> {
     if (!confirm('Are you sure you want to delete this report?')) {

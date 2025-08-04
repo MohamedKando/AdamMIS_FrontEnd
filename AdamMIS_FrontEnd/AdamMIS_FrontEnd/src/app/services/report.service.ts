@@ -525,4 +525,7 @@ export class ReportService {
   
   return throwError(() => new Error(errorMessage));
 };
+editReport(reportId: number): Observable<any> {
+  return this.http.post(`${this.apiUrl}/reports/${reportId}/edit`, {});
+}
 }

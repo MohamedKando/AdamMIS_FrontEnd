@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-
+import { map } from 'rxjs/operators'; // Add this import
 // ========== INTERFACES ========== //
 
 export interface CreateUserRequest {
@@ -19,6 +19,7 @@ export interface UserResponse {
   email: string;
   isDisabled: boolean;
   roles: string[];
+  photoPath?: string; // Add photo path
 }
 
 export interface UserRoleRequest {
@@ -55,6 +56,12 @@ export interface AdminResetPasswordRequest {
   userId: string;
   newPassword: string;
 }
+
+export interface UploadUserPhotoRequest {
+  userId: string;
+  photo: File;
+}
+
 export interface RolesResponse {
   id: string;
   name: string;
@@ -113,22 +120,48 @@ export class UserService {
     return this.http.get<RolesResponse[]>(`${this.baseRoleUrl}/Roles`);
   }
 
-getUserProfile(userId: string): Observable<UserResponse> {
-  return this.http.get<UserResponse>(`${this.baseUrl}/${userId}`);
-}
+  getUserProfile(userId: string): Observable<UserResponse> {
+    return this.http.get<UserResponse>(`${this.baseUrl}/${userId}`);
+  }
 
-updateUserProfile(userId: string, request: UpdateUserProfileRequest): Observable<UserResponse> {
-  return this.http.put<UserResponse>(`${this.baseUrl}/update-profile/${userId}`, request);
-}
+  updateUserProfile(userId: string, request: UpdateUserProfileRequest): Observable<UserResponse> {
+    return this.http.put<UserResponse>(`${this.baseUrl}/update-profile/${userId}`, request);
+  }
 
-changePassword(request: UserChangePasswordRequest): Observable<void> {
-  return this.http.post<void>(`${this.baseUrl}/change-password`, request);
-}
-adminResetPassword(request: AdminResetPasswordRequest): Observable<void> {
-  return this.http.post<void>(`${this.baseUrl}/reset-password`, request);
-}
+  changePassword(request: UserChangePasswordRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/change-password`, request);
+  }
+
+  adminResetPassword(request: AdminResetPasswordRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/reset-password`, request);
+  }
+
   // Add this if you create the departments endpoint
-getDepartments(): Observable<string[]> {
-  return this.http.get<string[]>(`${this.baseUrl}/departments`);
+  getDepartments(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.baseUrl}/departments`);
+  }
+
+  /** POST upload user photo */
+uploadUserPhoto(userId: string, photo: File): Observable<string> {
+  const formData = new FormData();
+  formData.append('userId', userId);
+  formData.append('photo', photo);
+  
+  // Return the Observable with proper mapping
+  return this.http.post<{photoPath: string}>(`${this.baseUrl}/UploadPhoto`, formData)
+    .pipe(
+      map(response => response.photoPath)
+    );
 }
+
+  /** Helper method to get full photo URL */
+  getPhotoUrl(photoPath: string | undefined | null): string {
+    if (!photoPath) {
+      return 'assets/images/AdamLogo.png'; // Default avatar path
+    }
+    // Remove leading slash if present and construct full URL
+    const cleanPath = photoPath.startsWith('/') ? photoPath.substring(1) : photoPath;
+    return `https://localhost:7209/${cleanPath}`;
+  }
+  
 }

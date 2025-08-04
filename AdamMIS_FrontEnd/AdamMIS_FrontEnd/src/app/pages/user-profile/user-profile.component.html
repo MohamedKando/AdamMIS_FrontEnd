@@ -1,10 +1,60 @@
 <div class="user-profile-container">
-  <!-- Header -->
+  <!-- Header with Photo -->
   <div class="profile-header">
+    <!-- Profile Photo Section -->
+    <div class="header-photo-section">
+      <div class="photo-container">
+        <img 
+          [src]="getPhotoPreviewUrl()" 
+          [alt]="user?.userName + ' photo'"
+          class="profile-photo"
+          (error)="onImageError($event)">
+        <div class="photo-overlay" *ngIf="isOwnProfile || isAdmin">
+          <button class="photo-edit-btn" (click)="onPhotoSelect()" [disabled]="isUploadingPhoto">
+            <i class="fas fa-camera"></i>
+            Change
+          </button>
+        </div>
+      </div>
 
-    <h1 class="page-title">
-      {{ isOwnProfile ? 'My Profile' : 'User Profile' }}
-    </h1>
+      <!-- Photo Upload Controls -->
+      <div *ngIf="(isOwnProfile || isAdmin) && (selectedPhoto || isUploadingPhoto)" class="photo-upload-controls">
+        <div *ngIf="selectedPhoto && !isUploadingPhoto" class="upload-actions">
+          <button class="btn btn-primary btn-sm" (click)="uploadPhoto()" [disabled]="isUploadingPhoto">
+            <i class="fas fa-upload"></i>
+            Upload
+          </button>
+          <button class="btn btn-secondary btn-sm" (click)="cancelPhotoUpload()" [disabled]="isUploadingPhoto">
+            <i class="fas fa-times"></i>
+            Cancel
+          </button>
+        </div>
+        
+        <div *ngIf="isUploadingPhoto" class="uploading-indicator">
+          <div class="upload-spinner"></div>
+          <span>Uploading...</span>
+        </div>
+      </div>
+
+      <!-- Hidden File Input -->
+      <input 
+        #fileInput 
+        type="file" 
+        accept="image/*" 
+        (change)="onFileSelected($event)"
+        style="display: none;">
+    </div>
+
+    <!-- Page Title and Status -->
+    <div class="header-content">
+      <h1 class="page-title">
+        {{ user?.userName }}'s Profile
+      </h1>
+      <!--<div class="header-status" *ngIf="user">
+        <span *ngIf="user.isDisabled" class="status-badge disabled">Disabled</span>
+        <span *ngIf="!user.isDisabled" class="status-badge active">Active</span>
+      </div>-->
+    </div>
   </div>
 
   <!-- Loading State -->
@@ -34,8 +84,6 @@
       <div class="card-header">
         <h2>Profile Information</h2>
         <div class="header-actions">
-          <span *ngIf="user.isDisabled" class="status-badge disabled">Disabled</span>
-          <span *ngIf="!user.isDisabled" class="status-badge active">Active</span>
           <button 
             *ngIf="isOwnProfile || isAdmin" 
             class="edit-btn"
@@ -66,9 +114,8 @@
               class="form-control"
               [readonly]="!isEditing"
               [class.readonly]="!isEditing">
-            <div *ngIf="profileForm.get('userName')?.invalid && profileForm.get('userName')?.touched" class="field-error">
-              <span *ngIf="profileForm.get('userName')?.errors?.['required']">Username is required</span>
-              <span *ngIf="profileForm.get('userName')?.errors?.['minlength']">Username must be at least 3 characters</span>
+            <div *ngIf="usernameErrors" class="field-error">
+              <span>{{ getUsernameErrorMessage() }}</span>
             </div>
           </div>
 

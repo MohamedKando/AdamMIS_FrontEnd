@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { UserService, UserResponse, UpdateUserProfileRequest, UserChangePasswordRequest, AdminResetPasswordRequest } from '../../services/user.service';
-import { AuthService } from '../../services/auth.service'; // Assuming you have this
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-user-profile',
@@ -10,18 +10,24 @@ import { AuthService } from '../../services/auth.service'; // Assuming you have 
   styleUrls: ['./user-profile.component.css']
 })
 export class UserProfileComponent implements OnInit {
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('userPhotoImg') userPhotoImg!: ElementRef<HTMLImageElement>; // Add this
+
   profileForm!: FormGroup;
   passwordForm!: FormGroup;
   adminPasswordForm!: FormGroup;
   
   user: UserResponse | null = null;
   departments: string[] = [];
+  selectedPhoto: File | null = null;
+  photoPreview: string | null = null;
   
   isAdmin = false;
   isOwnProfile = false;
   isEditing = false;
   isChangingPassword = false;
   isAdminResettingPassword = false;
+  isUploadingPhoto = false;
   
   loading = false;
   error = '';
@@ -29,13 +35,17 @@ export class UserProfileComponent implements OnInit {
   
   userId!: string;
   currentUserId!: string;
+  
+  // Add cache busting parameter
+  photoCacheBuster = Date.now();
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private fb: FormBuilder,
     private userService: UserService,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef // Add this
   ) {}
 
   ngOnInit(): void {
@@ -65,6 +75,15 @@ export class UserProfileComponent implements OnInit {
     }, { validators: this.adminPasswordMatchValidator });
   }
 
+  getDefaultPhotoUrl(): string {
+    return this.userService.getPhotoUrl(null);
+  }
+
+  onImageError(event: any): void {
+    const imgElement = event.target as HTMLImageElement;
+    imgElement.src = this.getDefaultPhotoUrl();
+  }
+
   passwordMatchValidator(form: FormGroup) {
     const newPassword = form.get('newPassword');
     const confirmPassword = form.get('confirmNewPassword');
@@ -86,7 +105,6 @@ export class UserProfileComponent implements OnInit {
   }
 
   getCurrentUser(): void {
-    // Get current user info from auth service
     this.currentUserId = this.authService.getUserId();
     this.isAdmin = this.authService.hasRole('Admin') || this.authService.hasRole('SuperAdmin');
   }
@@ -95,11 +113,9 @@ export class UserProfileComponent implements OnInit {
     const routeUserId = this.route.snapshot.paramMap.get('id');
     
     if (routeUserId) {
-      // Coming from admin user management
       this.userId = routeUserId;
       this.isOwnProfile = this.userId === this.currentUserId;
     } else {
-      // Coming from user's own profile access
       this.userId = this.currentUserId;
       this.isOwnProfile = true;
     }
@@ -116,6 +132,8 @@ export class UserProfileComponent implements OnInit {
         this.user = user;
         this.populateForm();
         this.loading = false;
+        // Update cache buster when loading profile
+        this.photoCacheBuster = Date.now();
       },
       error: (err) => {
         this.error = 'Failed to load user profile';
@@ -128,7 +146,7 @@ export class UserProfileComponent implements OnInit {
   loadDepartments(): void {
     this.userService.getDepartments().subscribe({
       next: (departments) => {
-        this.departments = departments; // departments is string[] directly
+        this.departments = departments;
       },
       error: (err) => {
         console.error('Error loading departments:', err);
@@ -147,13 +165,116 @@ export class UserProfileComponent implements OnInit {
     }
   }
 
+  // Photo upload methods
+  onPhotoSelect(): void {
+    this.fileInput.nativeElement.click();
+  }
+
+  onFileSelected(event: any): void {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        this.error = 'Please select a valid image file (JPEG, PNG, or GIF)';
+        return;
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        this.error = 'File size must be less than 5MB';
+        return;
+      }
+
+      this.selectedPhoto = file;
+      this.error = '';
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.photoPreview = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  uploadPhoto(): void {
+    if (!this.selectedPhoto) {
+      this.error = 'Please select a photo first';
+      return;
+    }
+
+    this.isUploadingPhoto = true;
+    this.error = '';
+
+    this.userService.uploadUserPhoto(this.userId, this.selectedPhoto).subscribe({
+      next: (photoPath) => {
+        if (this.user) {
+          this.user.photoPath = photoPath;
+        }
+        
+        // SOLUTION 1: Update cache buster to force image reload
+        this.photoCacheBuster = Date.now();
+        
+        // SOLUTION 2: Force image reload if ViewChild is available
+        if (this.userPhotoImg?.nativeElement) {
+          const imgElement = this.userPhotoImg.nativeElement;
+          const currentSrc = imgElement.src;
+          imgElement.src = '';
+          setTimeout(() => {
+            imgElement.src = this.getUserPhotoUrl();
+          }, 10);
+        }
+        
+        // SOLUTION 3: Trigger change detection
+        this.cdr.detectChanges();
+        
+        this.successMessage = 'Photo uploaded successfully';
+        this.selectedPhoto = null;
+        this.photoPreview = null;
+        this.isUploadingPhoto = false;
+        
+        // Reset file input
+        if (this.fileInput) {
+          this.fileInput.nativeElement.value = '';
+        }
+      },
+      error: (err) => {
+        this.error = 'Failed to upload photo';
+        this.isUploadingPhoto = false;
+        console.error('Error uploading photo:', err);
+      }
+    });
+  }
+
+  cancelPhotoUpload(): void {
+    this.selectedPhoto = null;
+    this.photoPreview = null;
+    if (this.fileInput) {
+      this.fileInput.nativeElement.value = '';
+    }
+  }
+
+  // UPDATED: Add cache busting parameter
+  getUserPhotoUrl(): string {
+    const baseUrl = this.userService.getPhotoUrl(this.user?.photoPath);
+    // Add cache buster parameter to force browser to reload the image
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}t=${this.photoCacheBuster}`;
+  }
+
+  getPhotoPreviewUrl(): string {
+    return this.photoPreview || this.getUserPhotoUrl();
+  }
+
   toggleEdit(): void {
     this.isEditing = !this.isEditing;
     this.error = '';
     this.successMessage = '';
     
     if (!this.isEditing) {
-      this.populateForm(); // Reset form if canceling
+      this.populateForm();
     }
   }
 
@@ -171,33 +292,51 @@ export class UserProfileComponent implements OnInit {
     this.successMessage = '';
   }
 
-  onUpdateProfile(): void {
-    if (this.profileForm.valid) {
-      this.loading = true;
-      this.error = '';
-      
-      const updateRequest: UpdateUserProfileRequest = {
-        userName: this.profileForm.value.userName,
-        email: this.profileForm.value.email,
-        title: this.profileForm.value.title,
-        department: this.profileForm.value.department
-      };
+ onUpdateProfile(): void {
+  if (this.profileForm.valid) {
+    this.loading = true;
+    this.error = '';
+    
+    const updateRequest: UpdateUserProfileRequest = {
+      userName: this.profileForm.value.userName,
+      email: this.profileForm.value.email,
+      title: this.profileForm.value.title,
+      department: this.profileForm.value.department
+    };
 
-      this.userService.updateUserProfile(this.userId, updateRequest).subscribe({
-        next: (user) => {
-          this.user = user;
-          this.successMessage = 'Profile updated successfully';
-          this.isEditing = false;
-          this.loading = false;
-        },
-        error: (err) => {
+    console.log('Current photoPath before update:', this.user?.photoPath);
+
+    this.userService.updateUserProfile(this.userId, updateRequest).subscribe({
+      next: (updatedUser) => {
+        console.log('Server response:', updatedUser);
+        console.log('Server returned photoPath:', updatedUser.photoPath);
+        
+        const currentPhotoPath = this.user?.photoPath;
+        this.user = {
+          ...updatedUser,
+          photoPath: updatedUser.photoPath || currentPhotoPath
+        } as UserResponse;
+        
+        console.log('Final user object photoPath:', this.user.photoPath);
+        
+        this.successMessage = 'Profile updated successfully';
+        this.isEditing = false;
+        this.loading = false;
+      },
+      error: (err) => {
+        if (err.status === 400 && err.error?.title === 'User.DublicatedUser') {
+          this.error = err.error.detail || 'Username already exists. Please choose a different username.';
+        } else if (err.status === 400 && err.error?.detail) {
+          this.error = err.error.detail;
+        } else {
           this.error = 'Failed to update profile';
-          this.loading = false;
-          console.error('Error updating profile:', err);
         }
-      });
-    }
+        this.loading = false;
+        console.error('Error updating profile:', err);
+      }
+    });
   }
+}
 
   onChangePassword(): void {
     if (this.passwordForm.valid) {
@@ -254,10 +393,8 @@ export class UserProfileComponent implements OnInit {
 
   goBack(): void {
     if (this.isOwnProfile && !this.route.snapshot.paramMap.get('id')) {
-      // User accessed their own profile, go to dashboard or home
       this.router.navigate(['/dashboard']);
     } else {
-      // Admin accessed from user management, go back to user management
       this.router.navigate(['/admin/users']);
     }
   }
@@ -265,5 +402,23 @@ export class UserProfileComponent implements OnInit {
   clearMessages(): void {
     this.error = '';
     this.successMessage = '';
+  }
+
+  get usernameErrors() {
+    const usernameControl = this.profileForm.get('userName');
+    return usernameControl?.errors && usernameControl?.touched;
+  }
+
+  getUsernameErrorMessage(): string {
+    const usernameControl = this.profileForm.get('userName');
+    if (usernameControl?.errors) {
+      if (usernameControl.errors['required']) {
+        return 'Username is required';
+      }
+      if (usernameControl.errors['minlength']) {
+        return 'Username must be at least 3 characters';
+      }
+    }
+    return '';
   }
 }
