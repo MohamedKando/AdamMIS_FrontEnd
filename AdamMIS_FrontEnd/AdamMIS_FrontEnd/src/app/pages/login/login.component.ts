@@ -55,15 +55,9 @@ export class LoginComponent {
         console.error('Login error:', err);
         this.isLoading = false;
         
-        if (err.status === 401) {
-          this.showError('Invalid username or password');
-        } else if (err.status === 400) {
-          this.showError('Please check your input');
-        } else if (err.status === 0) {
-          this.showError('Unable to connect to server. Please try again.');
-        } else {
-          this.showError('Login failed. Please try again.');
-        }
+        
+          this.showError(err.error.detail || 'Login failed. Please check your credentials.');
+      
       }
     });
   }

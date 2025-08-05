@@ -324,13 +324,9 @@ export class UserProfileComponent implements OnInit {
         this.loading = false;
       },
       error: (err) => {
-        if (err.status === 400 && err.error?.title === 'User.DublicatedUser') {
-          this.error = err.error.detail || 'Username already exists. Please choose a different username.';
-        } else if (err.status === 400 && err.error?.detail) {
-          this.error = err.error.detail;
-        } else {
-          this.error = 'Failed to update profile';
-        }
+         {
+          this.error = err.error.detail || 'Failed to update profile';
+        } 
         this.loading = false;
         console.error('Error updating profile:', err);
       }
@@ -338,32 +334,37 @@ export class UserProfileComponent implements OnInit {
   }
 }
 
-  onChangePassword(): void {
-    if (this.passwordForm.valid) {
-      this.loading = true;
-      this.error = '';
-      
-      const changePasswordRequest: UserChangePasswordRequest = {
-        oldPassword: this.passwordForm.value.oldPassword,
-        newPassword: this.passwordForm.value.newPassword,
-        confirmNewPassword: this.passwordForm.value.confirmNewPassword
-      };
+onChangePassword(): void {
+  if (this.passwordForm.valid) {
+    this.loading = true;
+    this.error = '';
+    
+    const changePasswordRequest: UserChangePasswordRequest = {
+      oldPassword: this.passwordForm.value.oldPassword,
+      newPassword: this.passwordForm.value.newPassword,
+      confirmNewPassword: this.passwordForm.value.confirmNewPassword
+    };
 
-      this.userService.changePassword(changePasswordRequest).subscribe({
-        next: () => {
-          this.successMessage = 'Password changed successfully';
-          this.isChangingPassword = false;
-          this.passwordForm.reset();
-          this.loading = false;
-        },
-        error: (err) => {
-          this.error = 'Failed to change password';
-          this.loading = false;
-          console.error('Error changing password:', err);
-        }
-      });
-    }
+    console.log('Making password change request...');
+    
+    this.userService.changePassword(changePasswordRequest).subscribe({
+      next: (response) => {
+
+        
+        
+        this.successMessage = 'Password changed successfully';
+        this.isChangingPassword = false;
+        this.passwordForm.reset();
+        this.loading = false;
+      },
+      error: (err) => {
+
+        this.error = err.error.detail || 'Failed to change password';
+        this.loading = false;
+      }
+    });
   }
+}
 
   onAdminResetPassword(): void {
     if (this.adminPasswordForm.valid) {

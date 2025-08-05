@@ -34,64 +34,86 @@
     <div class="tab-content">
         <!-- Report Categories Tab -->
         <div class="tab-pane" [class.active]="activeTab === 'categories'">
-            <div class="grid-container">
-                <!-- Add New Category Card -->
-                <div class="card add-category-card">
-                    <h3>Add New Category</h3>
-                    <form (ngSubmit)="addCategory()" #categoryForm="ngForm">
-                        <div class="form-group">
-                            <label for="categoryName">Category Name</label>
-                            <input type="text" 
-                                   id="categoryName" 
-                                   [(ngModel)]="newCategory.name" 
-                                   name="categoryName" 
-                                   required 
-                                   placeholder="Enter category name">
-                        </div>
-                        <div class="form-group">
-                            <label for="categoryDescription">Description</label>
-                            <textarea id="categoryDescription" 
-                                      [(ngModel)]="newCategory.description" 
-                                      name="categoryDescription" 
-                                      placeholder="Enter category description"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="categoryColor">Color</label>
-                            <input type="color" 
-                                   id="categoryColor" 
-                                   [(ngModel)]="newCategory.color" 
-                                   name="categoryColor">
-                        </div>
-                        <button type="submit" 
-                                class="btn btn-primary" 
-                                [disabled]="!categoryForm.valid || isAddingCategory">
-                            <span *ngIf="!isAddingCategory">Add Category</span>
-                            <span *ngIf="isAddingCategory">Adding...</span>
-                        </button>
-                    </form>
+    <div class="grid-container">
+        <!-- Add New Category Card -->
+        <div class="card add-category-card">
+            <h3>Add New Category</h3>
+            <form (ngSubmit)="addCategory()" #categoryForm="ngForm">
+                <div class="form-group">
+                    <label for="categoryName">Category Name</label>
+                    <input type="text" 
+                           id="categoryName" 
+                           [(ngModel)]="newCategory.name" 
+                           name="categoryName" 
+                           required 
+                           placeholder="Enter category name">
                 </div>
+                <div class="form-group">
+                    <label for="categoryDescription">Description</label>
+                    <textarea id="categoryDescription" 
+                              [(ngModel)]="newCategory.description" 
+                              name="categoryDescription" 
+                              placeholder="Enter category description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="categoryColor">Color</label>
+                    <input type="color" 
+                           id="categoryColor" 
+                           [(ngModel)]="newCategory.color" 
+                           name="categoryColor">
+                </div>
+                <button type="submit" 
+                        class="btn btn-primary" 
+                        [disabled]="!categoryForm.valid || isAddingCategory">
+                    <span *ngIf="!isAddingCategory">Add Category</span>
+                    <span *ngIf="isAddingCategory">Adding...</span>
+                </button>
+            </form>
+        </div>
 
-                <!-- Existing Categories Grid -->
+        <!-- Categories Search and Display Section -->
+        <div class="card categories-library">
+            <div class="library-header">
+                <h3>Categories Library</h3>
+                <div class="category-search-container">
+                    <input type="text" 
+                           [(ngModel)]="categorySearchTerm" 
+                           (input)="filterCategories()" 
+                           placeholder="Search categories by name or description..."
+                           class="search-input">
+                    <i class="search-icon">🔍</i>
+                </div>
+            </div>
+            
+            <!-- Categories Grid -->
+            <div class="scrollable-content">
                 <div class="categories-grid">
-                    <div class="category-item" *ngFor="let category of categories">
+                    <div class="category-item" *ngFor="let category of filteredCategories">
                         <div class="category-color" [style.background-color]="category.color"></div>
                         <div class="category-details">
                             <h4>{{category.name}}</h4>
                             <p>{{category.description || 'No description'}}</p>
-                            <span class="report-count">{{category.reportCount || 0}} reports</span>
+                            <span class="report-count">{{getReportCountForCategory(category.id)}} reports</span>
                         </div>
                         <div class="category-actions">
                             <button class="btn btn-sm btn-secondary" (click)="editCategory(category)">
                                 <i class="icon">✏️</i> Edit
                             </button>
-                            <button class="btn btn-sm btn-danger" (click)="deleteCategory(category.id)">
+                            <button class="btn btn-sm btn-danger" (click)="initiateDeleteCategory(category.id)">
                                 <i class="icon">🗑️</i> Delete
                             </button>
                         </div>
                     </div>
                 </div>
+                
+                <!-- No Results Message -->
+                <div class="no-results" *ngIf="filteredCategories.length === 0 && categorySearchTerm">
+                    <p>No categories found matching "{{categorySearchTerm}}"</p>
+                </div>
             </div>
         </div>
+    </div>
+</div>
 
         <!-- Reports Tab -->
         <div class="tab-pane" [class.active]="activeTab === 'reports'">
@@ -151,18 +173,18 @@
                 <div class="card reports-library">
                     <div class="library-header">
                         <h3>Reports Library</h3>
-                        <div class="filters">
-                            <select [(ngModel)]="selectedFilterCategory" (change)="filterReports()">
-                                <option value="">All Categories</option>
-                                <option *ngFor="let category of categories" [value]="category.id">
-                                    {{category.name}}
-                                </option>
-                            </select>
-                            <input type="text" 
-                                   [(ngModel)]="searchTerm" 
-                                   (input)="filterReports()" 
-                                   placeholder="Search reports...">
-                        </div>
+                       <div class="filters">
+    <select [(ngModel)]="selectedFilterCategory" (change)="filterReports()">
+        <option value="">All Categories</option>
+        <option *ngFor="let category of categories" [value]="category.id">
+            {{category.name}}
+        </option>
+    </select>
+    <input type="text" 
+           [(ngModel)]="searchTerm" 
+           (input)="filterReports()" 
+           placeholder="Search reports by name, category, or description...">
+</div>
                     </div>
                     
                     <div class="scrollable-content">
@@ -179,7 +201,7 @@
                                     <button class="btn btn-sm btn-primary" (click)="viewReport(report)">
                                         <i class="icon">👁️</i> View
                                     </button>
-                                    <button class="btn btn-sm btn-danger" (click)="deleteReport(report.id)">
+                                    <button class="btn btn-sm btn-danger" (click)="initiateDeleteReport(report.id)">
                                         <i class="icon">🗑️</i> Delete
                                     </button>
                                 </div>
@@ -301,15 +323,14 @@
                                                     <span class="selection-count">{{selectedReportIds.length}} selected</span>
                                                 </div>
                                                 
-                                                <div class="search-input-container">
-                                                    <input type="text" 
-                                                        [(ngModel)]="reportSearchTerm" 
-                                                        (input)="filterReportsForAssignment()"
-                                                        placeholder="Search reports by name or category..."
-                                                        class="search-input">
-                                                    <i class="search-icon">🔍</i>
-                                                </div>
-                                                
+<div class="search-input-container">
+    <input type="text" 
+        [(ngModel)]="reportSearchTerm" 
+        (input)="filterReportsForAssignment()"
+        placeholder="Search reports by name, category, or description..."
+        class="search-input">
+    <i class="search-icon">🔍</i>
+</div>
                                                 <div class="scrollable-list">
                                                     <div class="report-list">
                                                         <div *ngFor="let report of getDisplayedReportsForAssignment()" class="report-item">
@@ -540,7 +561,7 @@
                                                                 <i class="icon">👁️</i>
                                                             </button>
                                                             <button class="btn btn-sm btn-danger" 
-                                                                    (click)="removeAssignment(assignment.id)"
+                                                                    (click)="initiateRemoveAssignment(assignment.id)"
                                                                     title="Remove Assignment">
                                                                 <i class="icon">🗑️</i>
                                                             </button>
@@ -569,7 +590,39 @@
     </div>
 </div>
 
-<style>
-/* Enhanced styling for better visual hierarchy */
+<!-- Confirmation Modals -->
+<!-- Delete Category Modal -->
+<app-confirmation-modal
+  [isVisible]="showDeleteConfirmation"
+  title="Delete Category"
+  message="Are you sure you want to delete this category? This action cannot be undone."
+  confirmText="Delete"
+  cancelText="Cancel"
+  (confirmed)="confirmDeleteCategory()"
+  (cancelled)="cancelDeleteCategory()">
+</app-confirmation-modal>
 
-</style>
+<!-- Delete Report Modal -->
+<app-confirmation-modal
+  [isVisible]="showDeleteReportConfirmation"
+  title="Delete Report"
+  message="Are you sure you want to delete this report? This action cannot be undone."
+  confirmText="Delete"
+  cancelText="Cancel"
+  (confirmed)="confirmDeleteReport()"
+  (cancelled)="cancelDeleteReport()">
+</app-confirmation-modal>
+
+<!-- Remove Assignment Modal -->
+<app-confirmation-modal
+  [isVisible]="showRemoveAssignmentConfirmation"
+  title="Remove Assignment"
+  message="Are you sure you want to remove this assignment? The user will no longer have access to this report."
+  confirmText="Remove"
+  cancelText="Cancel"
+  (confirmed)="confirmRemoveAssignment()"
+  (cancelled)="cancelRemoveAssignment()">
+</app-confirmation-modal>
+
+<!-- Toast Notifications -->
+<app-toast></app-toast>

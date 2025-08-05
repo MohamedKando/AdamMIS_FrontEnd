@@ -23,6 +23,10 @@ import {RoleManagementComponent} from './pages/admin-management/role-management/
 import { AuthGuard } from './guards/auth.guard';
 import { UserProfileComponent } from './pages/user-profile/user-profile.component';
 
+import { ToastComponent } from './Notfications/toast.component';
+import { ConfirmationModalComponent } from './Notfications/confirmation-modal.component';
+import { NotificationService } from './Notfications/notification.service';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -36,7 +40,10 @@ import { UserProfileComponent } from './pages/user-profile/user-profile.componen
     AdminManagementComponent,
     UserManagementComponent,
     RoleManagementComponent,
-    UserProfileComponent
+    UserProfileComponent,
+    ReportManagementComponent,
+    ToastComponent,
+    ConfirmationModalComponent
   ],
   imports: [
     BrowserModule,
@@ -54,7 +61,8 @@ import { UserProfileComponent } from './pages/user-profile/user-profile.componen
       multi: true ,
       
     },
-    AuthGuard
+    AuthGuard,
+    NotificationService
   ],
   bootstrap: [AppComponent]
 })
