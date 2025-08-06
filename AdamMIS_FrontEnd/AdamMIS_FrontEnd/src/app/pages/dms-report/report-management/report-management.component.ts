@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReportService, RCategoryResponse, ReportResponse, UserReportResponse, User, UploadProgress } from '../../../services/report.service';
 import { NotificationService } from '../../../Notfications/notification.service';
+import { UserService, UserResponse ,DepartmentResponse } from '../../../services/user.service';
 
 // Interfaces for type safety
 interface Category {
@@ -41,6 +42,9 @@ interface UserReportAssignment {
   isActive: boolean;
 }
 
+
+
+
 @Component({
   selector: 'app-report-management',
   templateUrl: './report-management.component.html',
@@ -69,7 +73,11 @@ export class ReportManagementComponent implements OnInit {
   assignmentMode: 'individual' | 'category' = 'individual';
   selectedCategoryForAssignment: number | null = null;
 
-
+  //Deparments
+  departments: DepartmentResponse[] = [];
+  selectedDepartmentId: number | null = null;
+  departmentUsers: UserResponse[] = [];
+  isLoadingDepartmentUsers: boolean = false;
 
   categorySearchTerm: string = '';
   filteredCategories: Category[] = [];
@@ -125,6 +133,7 @@ export class ReportManagementComponent implements OnInit {
   constructor(
     private router: Router,
     private reportService: ReportService,
+    private userService: UserService,
     private notificationService: NotificationService
   ) {
     this.activeTab = 'user-reports';
@@ -132,6 +141,7 @@ export class ReportManagementComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadInitialData();
+    
   }
 
   // Display methods
@@ -304,7 +314,8 @@ export class ReportManagementComponent implements OnInit {
         this.loadCategories(),
         this.loadReports(),
         this.loadUsers(),
-        this.loadUserReportAssignments()
+        this.loadUserReportAssignments(),
+        this.loadDepartments()
       ]);
     } catch (error) {
       console.error('Error loading initial data:', error);
@@ -656,22 +667,34 @@ getCategoryDescription(categoryId: number): string {
       return matchesSearch;
     });
   }
-
-  filterUserReportAssignments(): void {
-    this.filteredUserReportAssignments = this.userReportAssignments.filter(assignment => {
-      const matchesSearch = !this.assignmentSearchTerm || 
-        assignment.userName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase()) ||
-        assignment.reportFileName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase()) ||
-        assignment.categoryName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase());
-      
-      const matchesCategory = !this.assignmentCategoryFilter || 
-        assignment.categoryName === this.assignmentCategoryFilter;
-      
-      const matchesDate = this.matchesDateFilter(assignment.assignedAt);
-      
-      return matchesSearch && matchesCategory && matchesDate;
-    });
+// Your existing viewUserReports method stays the same
+viewUserReports(userId: string): void {
+  this.setActiveUserReportsSubTab('history');
+  
+  const user = this.users.find(u => u.id === userId);
+  if (user) {
+    this.assignmentSearchTerm = user.userName; // This now works with exact match
+    this.filterUserReportAssignments();
   }
+}
+// Minimal change to your existing code - just change the filter logic
+
+filterUserReportAssignments(): void {
+  this.filteredUserReportAssignments = this.userReportAssignments.filter(assignment => {
+    // FIXED: Use exact match (===) instead of includes() when searching by exact user name
+    const matchesSearch = !this.assignmentSearchTerm || 
+      assignment.userName.toLowerCase() === this.assignmentSearchTerm.toLowerCase() || // EXACT match for user names
+      assignment.reportFileName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase()) ||
+      assignment.categoryName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase());
+    
+    const matchesCategory = !this.assignmentCategoryFilter || 
+      assignment.categoryName === this.assignmentCategoryFilter;
+    
+    const matchesDate = this.matchesDateFilter(assignment.assignedAt);
+    
+    return matchesSearch && matchesCategory && matchesDate;
+  });
+}
 
   private matchesDateFilter(assignedDate: Date): boolean {
     if (!this.assignmentDateFilter) return true;
@@ -732,33 +755,35 @@ getCategoryDescription(categoryId: number): string {
     this.filteredUsersWithReports = [...this.usersWithReports];
   }
 
-  private async loadUserReportAssignments(): Promise<void> {
-    if (this.isLoadingAssignments) return;
-    
-    this.isLoadingAssignments = true;
-    try {
-      const allAssignments: UserReportAssignment[] = [];
-      
-      for (const user of this.users) {
-        const userReports = await this.reportService.getUserReports(user.id).toPromise();
-        if (userReports) {
-          allAssignments.push(...userReports);
-        }
-      }
-      
-      this.userReportAssignments = allAssignments;
-      this.filteredUserReportAssignments = [...this.userReportAssignments];
-      this.updateUsersWithReports();
-    } catch (error) {
-      console.error('Error loading user report assignments:', error);
-      this.notificationService.showError('Error loading user report assignments. Please try again.');
-      this.userReportAssignments = [];
-      this.filteredUserReportAssignments = [];
-    } finally {
-      this.isLoadingAssignments = false;
-    }
-  }
+private async loadUserReportAssignments(): Promise<void> {
+  if (this.isLoadingAssignments) return;
+  
+  this.isLoadingAssignments = true;
+  try {
+    // BEFORE: Multiple API calls (N+1 problem)
+    // for (const user of this.users) {
+    //   const userReports = await this.reportService.getUserReports(user.id).toPromise();
+    //   if (userReports) {
+    //     allAssignments.push(...userReports);
+    //   }
+    // }
 
+    // AFTER: Single API call
+    const allAssignments = await this.reportService.getAllUserReports().toPromise();
+    
+    this.userReportAssignments = allAssignments || [];
+    this.filteredUserReportAssignments = [...this.userReportAssignments];
+    this.updateUsersWithReports();
+    
+  } catch (error) {
+    console.error('Error loading user report assignments:', error);
+    this.notificationService.showError('Error loading user report assignments. Please try again.');
+    this.userReportAssignments = [];
+    this.filteredUserReportAssignments = [];
+  } finally {
+    this.isLoadingAssignments = false;
+  }
+}
   // User Report Assignment Methods
   onUserSelection(event: Event, userId: string): void {
     const target = event.target as HTMLInputElement;
@@ -881,15 +906,7 @@ getCategoryDescription(categoryId: number): string {
     console.log('Assignment form reset complete');
   }
 
-  viewUserReports(userId: string): void {
-    this.setActiveUserReportsSubTab('history');
-    
-    const user = this.users.find(u => u.id === userId);
-    if (user) {
-      this.assignmentSearchTerm = user.userName;
-      this.filterUserReportAssignments();
-    }
-  }
+
 
   assignMoreReports(userId: string): void {
     this.setActiveUserReportsSubTab('assign');
@@ -967,4 +984,76 @@ getCategoryDescription(categoryId: number): string {
       this.notificationService.showError('API connection failed. Please check your connection and try again.');
     }
   }
+  //Department 
+loadDepartments(): void {
+  this.userService.getDepartments().subscribe({
+    next: (departments) => {
+      this.departments = departments;
+    },
+    error: (error) => {
+      console.error('Error loading departments:', error);
+      // Handle error (show notification, etc.)
+    }
+  });
 }
+onDepartmentSelectionChange(): void {
+  // Clear all previous user selections when department changes
+  this.selectedUserIds = [];
+  
+  if (this.selectedDepartmentId) {
+    this.loadDepartmentUsers(this.selectedDepartmentId);
+  } else {
+    this.departmentUsers = [];
+  }
+}
+/**
+ * Load users for a specific department
+ */
+loadDepartmentUsers(departmentId: number): void {
+  this.isLoadingDepartmentUsers = true;
+  
+  this.userService.getDepartmentUsers(departmentId).subscribe({
+    next: (users) => {
+      this.departmentUsers = users;
+      this.isLoadingDepartmentUsers = false;
+    },
+    error: (error) => {
+      console.error('Error loading department users:', error);
+      this.isLoadingDepartmentUsers = false;
+      // Handle error (show notification, etc.)
+    }
+  });
+}
+/**
+ * Select all users from the selected department
+ */
+selectAllDepartmentUsers(): void {
+  if (!this.selectedDepartmentId || this.departmentUsers.length === 0) {
+    return;
+  }
+
+  // Add all department user IDs to selectedUserIds if not already selected
+  this.departmentUsers.forEach(user => {
+    if (!this.selectedUserIds.includes(user.id)) {
+      this.selectedUserIds.push(user.id);
+    }
+  });
+
+  // Optionally show a notification
+  console.log(`Selected ${this.departmentUsers.length} users from department`);
+}
+/**
+ * Get department name by ID
+ */
+getDepartmentName(departmentId: number | null): string {
+  if (!departmentId) return '';
+  
+  const department = this.departments.find(d => Number(d.id) === Number(departmentId));
+  return department ? department.name : '';
+}
+
+
+}
+
+
+

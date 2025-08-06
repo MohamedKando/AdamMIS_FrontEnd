@@ -55,6 +55,11 @@ export interface User {
   id: string;
   userName: string;
   email?: string;
+      departmentId?: number;
+  department?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface UploadProgress {
@@ -528,4 +533,7 @@ export class ReportService {
 editReport(reportId: number): Observable<any> {
   return this.http.post(`${this.apiUrl}/reports/${reportId}/edit`, {});
 }
+  getAllUserReports(): Observable<UserReportResponse[]> {
+    return this.http.get<UserReportResponse[]>(`${this.apiUrl}/user-reports/users`);
+  }
 }

@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { UserService, UserResponse, UpdateUserProfileRequest, UserChangePasswordRequest, AdminResetPasswordRequest } from '../../services/user.service';
+import { UserService, UserResponse, UpdateUserProfileRequest, UserChangePasswordRequest, AdminResetPasswordRequest,DepartmentResponse } from '../../services/user.service';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -18,7 +18,7 @@ export class UserProfileComponent implements OnInit {
   adminPasswordForm!: FormGroup;
   
   user: UserResponse | null = null;
-  departments: string[] = [];
+  departments: DepartmentResponse [] = [];
   selectedPhoto: File | null = null;
   photoPreview: string | null = null;
   

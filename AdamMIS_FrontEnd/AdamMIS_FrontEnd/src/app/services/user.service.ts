@@ -20,6 +20,11 @@ export interface UserResponse {
   isDisabled: boolean;
   roles: string[];
   photoPath?: string; // Add photo path
+    departmentId?: number;
+  department?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface UserRoleRequest {
@@ -137,9 +142,12 @@ export class UserService {
   }
 
   // Add this if you create the departments endpoint
-  getDepartments(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.baseUrl}/departments`);
+  getDepartments(): Observable<DepartmentResponse[]> {
+    return this.http.get<DepartmentResponse[]>(`${this.baseUrl}/departments`);
   }
+  getDepartmentUsers(departmentId: number): Observable<UserResponse[]> {
+  return this.http.get<UserResponse[]>(`${this.baseUrl}/department-users/${departmentId}`);
+}
 
   /** POST upload user photo */
 uploadUserPhoto(userId: string, photo: File): Observable<string> {

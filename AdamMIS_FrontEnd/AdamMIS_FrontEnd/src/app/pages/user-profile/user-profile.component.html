@@ -156,7 +156,7 @@
               formControlName="department"
               class="form-control">
               <option value="">Select Department</option>
-              <option *ngFor="let dept of departments" [value]="dept">{{ dept }}</option>
+              <option *ngFor="let dept of departments" [value]="dept.name">{{ dept.name }}</option>
             </select>
             <input 
               *ngIf="!isEditing"
