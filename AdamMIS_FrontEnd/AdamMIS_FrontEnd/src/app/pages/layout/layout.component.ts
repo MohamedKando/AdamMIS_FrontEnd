@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy, HostListener, ElementRef, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { UserService } from '../../services/user.service'; // Add this import
+import { UserService } from '../../services/user.service';
+import { NotificationService } from '../../Notfications/notification.service';
 
 interface SubmenuItem {
   label: string;
@@ -35,10 +36,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
   showUserMenu = false;
   currentUserName = '';
   currentUserRoles: string[] = [];
-  currentUserPhoto = ''; // Add this for user photo
+  currentUserPhoto = '';
   isAdmin = false;
   
-  private photoCheckInterval: any; // For periodic photo updates
+  // Confirmation modal state for logout
+  showLogoutConfirmation = false;
+  
+  private photoCheckInterval: any;
   
   // Track which menu items are expanded
   expandedMenus: { [key: string]: boolean } = {
@@ -94,7 +98,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router, 
     private authService: AuthService,
-    private userService: UserService // Add UserService injection
+    private userService: UserService,
+    private notificationService: NotificationService // Add NotificationService injection
   ) {}
 
   ngOnInit(): void {
@@ -268,11 +273,47 @@ export class LayoutComponent implements OnInit, OnDestroy {
     return icons[iconType] || '📄';
   }
 
-  // Logout method
+  // Updated logout method with confirmation modal and toast notifications
   logout(): void {
-    if (confirm('Are you sure you want to logout?')) {
+    // Show confirmation modal instead of browser confirm
+    this.showLogoutConfirmation = true;
+    this.closeUserMenu(); // Close the user menu
+  }
+
+  // Handle logout confirmation
+  onLogoutConfirmed(): void {
+    try {
+      // Reset the modal visibility first
+      this.showLogoutConfirmation = false;
+      
+      // Show info toast that logout is processing
+      this.notificationService.showInfo('Logging out...', 1000);
+      
+      // Perform logout
       this.authService.logout();
-      this.router.navigate(['/login']);
+      
+      // Show success toast
+      this.notificationService.showSuccess('Successfully logged out. See you soon!', 3000);
+      
+      // Navigate to login page after a brief delay to show the success message
+      setTimeout(() => {
+        this.router.navigate(['/login']);
+      }, 1500);
+      
+    } catch (error) {
+      // Reset modal visibility on error too
+      this.showLogoutConfirmation = false;
+      // Show error toast if logout fails
+      this.notificationService.showError('An error occurred during logout. Please try again.', 5000);
+      console.error('Logout error:', error);
     }
+  }
+
+  // Handle logout cancellation
+  onLogoutCancelled(): void {
+    // Reset the modal visibility
+    this.showLogoutConfirmation = false;
+    // Show info toast that logout was cancelled
+    this.notificationService.showInfo('Logout cancelled', 2000);
   }
 }

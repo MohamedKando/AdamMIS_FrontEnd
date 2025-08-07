@@ -1,5 +1,6 @@
-// toast.component.ts
+// toast.component.ts - FIXED VERSION
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { Subscription } from 'rxjs';
 import { NotificationService, Toast } from './notification.service';
 
@@ -8,7 +9,7 @@ import { NotificationService, Toast } from './notification.service';
   template: `
     <div class="toast-container">
       <div 
-        *ngFor="let toast of toasts" 
+        *ngFor="let toast of toasts; let i = index" 
         class="toast toast-{{toast.type}}"
         [@slideIn]>
         <div class="toast-content">
@@ -31,11 +32,13 @@ import { NotificationService, Toast } from './notification.service';
       position: fixed;
       top: 20px;
       right: 20px;
-      z-index: 9999;
+      z-index: 99999;
       max-width: 400px;
+      pointer-events: none;
     }
 
     .toast {
+      pointer-events: auto;
       margin-bottom: 10px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -101,31 +104,35 @@ import { NotificationService, Toast } from './notification.service';
     .toast-close:hover {
       opacity: 1;
     }
-
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
   `],
   animations: [
-    // You can add Angular animations here if you want
+    trigger('slideIn', [
+      transition(':enter', [
+        style({ transform: 'translateX(100%)', opacity: 0 }),
+        animate('300ms ease-in-out', style({ transform: 'translateX(0)', opacity: 1 }))
+      ]),
+      transition(':leave', [
+        animate('200ms ease-in-out', style({ transform: 'translateX(100%)', opacity: 0 }))
+      ])
+    ])
   ]
 })
 export class ToastComponent implements OnInit, OnDestroy {
   toasts: Toast[] = [];
   private subscription: Subscription = new Subscription();
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(private notificationService: NotificationService) {
+    console.log('🚀 ToastComponent constructed');
+  }
 
   ngOnInit() {
+    console.log('🚀 ToastComponent initialized');
     this.subscription = this.notificationService.toasts$.subscribe(
-      toasts => this.toasts = toasts
+      toasts => {
+        console.log('📱 Received toasts in component:', toasts);
+        console.log('📱 Toasts array length:', toasts.length);
+        this.toasts = toasts;
+      }
     );
   }
 

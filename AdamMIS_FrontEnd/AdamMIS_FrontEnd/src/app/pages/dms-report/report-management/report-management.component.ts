@@ -89,6 +89,13 @@ export class ReportManagementComponent implements OnInit {
     description: '',
     color: '#3498db'
   };
+  isEditModalOpen = false;
+  editingCategory: any = {
+  id: null,
+  name: '',
+  description: '',
+  color: '#000000'
+};
   isAddingCategory: boolean = false;
   isUpdatingCategory: boolean = false;
 
@@ -377,34 +384,50 @@ filterCategories(): void {
       this.isAddingCategory = false;
     }
   }
+  openEditModal(category: any): void {
+    this.editingCategory = {
+      id: category.id,
+      name: category.name,
+      description: category.description || '',
+      color: category.color || '#000000'
+    };
+    this.isEditModalOpen = true;
+  }
+
+  closeEditModal(): void {
+    this.isEditModalOpen = false;
+    this.editingCategory = {
+      id: null,
+      name: '',
+      description: '',
+      color: '#000000'
+    };
+  }
 
 
-
-  async editCategory(category: Category): Promise<void> {
-  const newColor = prompt('Enter new color (hex format):', category.color);
-  const newDescription = prompt('Enter new description:', category.description);
+  async updateCategory(): Promise<void> {
+  if (!this.editingCategory.id) return;
   
-  if (newColor !== null && newDescription !== null) {
-    this.isUpdatingCategory = true;
-    try {
-      const updateRequest = {
-        name: category.name,
-        description: newDescription || category.description,
-        color: newColor || category.color
-      };
-      
-      const response = await this.reportService.updateCategory(category.id, updateRequest).toPromise();
-      if (response) {
-        await this.loadCategories();
-        this.filterCategories(); // Re-apply current filter
-        this.notificationService.showSuccess('Category updated successfully!');
-      }
-    } catch (error) {
-      console.error('Error updating category:', error);
-      this.notificationService.showError('Error updating category. Please try again.');
-    } finally {
-      this.isUpdatingCategory = false;
+  this.isUpdatingCategory = true;
+  try {
+    const updateRequest = {
+      name: this.editingCategory.name,
+      description: this.editingCategory.description,
+      color: this.editingCategory.color
+    };
+    
+    const response = await this.reportService.updateCategory(this.editingCategory.id, updateRequest).toPromise();
+    if (response) {
+      await this.loadCategories();
+      this.filterCategories(); // Re-apply current filter
+      this.notificationService.showSuccess('Category updated successfully!');
+      this.closeEditModal();
     }
+  } catch (error) {
+    console.error('Error updating category:', error);
+    this.notificationService.showError('Error updating category. Please try again.');
+  } finally {
+    this.isUpdatingCategory = false;
   }
 }
 
@@ -422,9 +445,19 @@ async confirmDeleteCategory(): Promise<void> {
     this.categories = this.categories.filter(cat => cat.id !== this.categoryToDelete);
     this.filterCategories(); // Re-apply current filter
     this.notificationService.showSuccess('Category deleted successfully!');
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting category:', error);
-    this.notificationService.showError('Error deleting category. Please try again.');
+    
+    // Check if the error is due to foreign key constraint/restriction
+    if (error?.status === 400 || error?.status === 409 || 
+        error?.message?.includes('constraint') || 
+        error?.message?.includes('restrict') ||
+        error?.message?.includes('foreign key') ||
+        error?.error?.message?.includes('reports')) {
+      this.notificationService.showError('Please delete the reports of this category first');
+    } else {
+      this.notificationService.showError('Error deleting category. Please try again.');
+    }
   } finally {
     this.categoryToDelete = null;
     this.showDeleteConfirmation = false;
@@ -681,7 +714,7 @@ viewUserReports(userId: string): void {
 
 filterUserReportAssignments(): void {
   this.filteredUserReportAssignments = this.userReportAssignments.filter(assignment => {
-    // FIXED: Use exact match (===) instead of includes() when searching by exact user name
+    // FIXED: Use exact match (===) instead of includes() when searching by exact User Name 
     const matchesSearch = !this.assignmentSearchTerm || 
       assignment.userName.toLowerCase() === this.assignmentSearchTerm.toLowerCase() || // EXACT match for user names
       assignment.reportFileName.toLowerCase().includes(this.assignmentSearchTerm.toLowerCase()) ||

@@ -98,21 +98,21 @@
             </button>
             
             <!-- User Profile Button -->
-  <button 
-    class="btn btn-outline-info btn-sm action-btn"
-    [routerLink]="['/admin-management/users', user.id, 'profile']"
-    title="View Profile"
-    matTooltip="View User Profile">
-    <i class="fas fa-user"></i>
-    <span class="btn-text">Profile</span>
-  </button>
+            <button 
+              class="btn btn-outline-info btn-sm action-btn"
+              [routerLink]="['/admin-management/users', user.id, 'profile']"
+              title="View Profile"
+              matTooltip="View User Profile">
+              <i class="fas fa-user"></i>
+              <span class="btn-text">Profile</span>
+            </button>
             
             <!-- Ban/Unban Button -->
             <button 
               class="btn-action" 
               [class.btn-ban]="!user.isDisabled"
               [class.btn-unban]="user.isDisabled"
-              (click)="confirmBanUser(user)"
+              (click)="showBanConfirmation(user)"
               [title]="user.isDisabled ? 'Unban User' : 'Ban User'">
               {{ user.isDisabled ? 'Unban' : 'Ban' }}
             </button>
@@ -168,20 +168,20 @@
           Password is required (minimum 6 characters)
         </div>
       </div>
-
-      <div class="form-group">
-        <label for="departmentName">Department</label>
-        <input 
-          type="text" 
-          id="departmentName"
-          formControlName="departmentName"
-          class="form-input"
-          placeholder="Enter department">
-        <div *ngIf="addUserForm.get('departmentName')?.invalid && addUserForm.get('departmentName')?.touched" 
-             class="error-message">
-          Department is required
-        </div>
-      </div>
+<div class="form-group">
+  <label for="department">Department</label>
+  <select 
+    id="department"
+    formControlName="department"
+    class="form-control">
+    <option value="">Select Department</option>
+    <option *ngFor="let dept of departments" [value]="dept.name">{{ dept.name }}</option>
+  </select>
+  <div *ngIf="addUserForm.get('department')?.invalid && addUserForm.get('department')?.touched" 
+       class="error-message">
+    Department is required
+  </div>
+</div>
 
       <div class="form-group">
         <label for="title">Title</label>
@@ -271,33 +271,16 @@
   </div>
 </div>
 
-<!-- Ban/Unban Confirmation Modal -->
-<div *ngIf="showDeleteConfirm" class="modal-overlay" (click)="cancelDelete()">
-  <div class="modal-content modal-small" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Confirm Action</h2>
-      <button class="close-btn" (click)="cancelDelete()">×</button>
-    </div>
-    
-    <div class="modal-body">
-      <p>Are you sure you want to {{ userToDelete?.isDisabled ? 'unban' : 'ban' }} user 
-        <strong>{{ userToDelete?.userName }}</strong>?</p>
-      <p class="warning-text">
-        {{ userToDelete?.isDisabled ? 'This will enable the user\'s account.' : 'This action will disable the user\'s account.' }}
-      </p>
-    </div>
-    
-    <div class="modal-actions">
-      <button type="button" class="btn btn-secondary" (click)="cancelDelete()">
-        Cancel
-      </button>
-      <button type="button" 
-              class="btn" 
-              [class.btn-danger]="!userToDelete?.isDisabled"
-              [class.btn-success]="userToDelete?.isDisabled"
-              (click)="deleteUser()">
-        {{ userToDelete?.isDisabled ? 'Unban User' : 'Ban User' }}
-      </button>
-    </div>
-  </div>
-</div>
+<!-- Confirmation Modal using your new component -->
+<app-confirmation-modal
+  [isVisible]="showConfirmation"
+  [title]="confirmationTitle"
+  [message]="confirmationMessage"
+  [confirmText]="confirmButtonText"
+  [cancelText]="'Cancel'"
+  (confirmed)="onConfirmAction()"
+  (cancelled)="onCancelAction()">
+</app-confirmation-modal>
+
+<!-- Toast component for notifications -->
+<app-toast></app-toast>

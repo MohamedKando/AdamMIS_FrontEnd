@@ -17,26 +17,7 @@
           <i class="icon-list"></i>
           List View
         </button>
-
       </div>
-    </div>
-  </div>
-
-  <!-- Alert Messages -->
-  <div class="alerts" *ngIf="error || success">
-    <div class="alert alert-error" *ngIf="error">
-      <i class="icon-alert-circle"></i>
-      {{ error }}
-      <button class="alert-close" (click)="error = null">
-        <i class="icon-x"></i>
-      </button>
-    </div>
-    <div class="alert alert-success" *ngIf="success">
-      <i class="icon-check-circle"></i>
-      {{ success }}
-      <button class="alert-close" (click)="success = null">
-        <i class="icon-x"></i>
-      </button>
     </div>
   </div>
 
@@ -284,3 +265,17 @@
     </div>
   </div>
 </div>
+
+<!-- Confirmation Modal -->
+<app-confirmation-modal
+  [isVisible]="showConfirmModal"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [confirmText]="'Confirm'"
+  [cancelText]="'Cancel'"
+  (confirmed)="onModalConfirmed()"
+  (cancelled)="onModalCancelled()">
+</app-confirmation-modal>
+
+<!-- Toast Container -->
+<app-toast></app-toast>

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { RoleService, RolesResponse, RolesDetailsResponse, RoleRequest } from '../../../services/role.service';
+import { NotificationService } from '../../../Notfications/notification.service';
 
 @Component({
   selector: 'app-role-management',
@@ -26,13 +27,21 @@ export class RoleManagementComponent implements OnInit {
   success: string | null = null;
   currentView: 'list' | 'add' | 'edit' = 'list';
 
+  // Confirmation modal properties
+  showConfirmModal = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalAction: (() => void) | null = null;
+  pendingToggleRole: RolesResponse | null = null;
+
   // Form properties
   roleForm: FormGroup;
   editRoleForm: FormGroup;
 
   constructor(
     private roleService: RoleService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private notificationService: NotificationService // Add this injection
   ) {
     // Initialize forms
     this.roleForm = this.fb.group({
@@ -51,11 +60,37 @@ export class RoleManagementComponent implements OnInit {
     this.loadAvailablePermissions();
   }
 
+  // Confirmation Modal Methods
+  showConfirmationModal(title: string, message: string, action: () => void): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalAction = action;
+    this.showConfirmModal = true;
+  }
+
+  onModalConfirmed(): void {
+    if (this.confirmModalAction) {
+      this.confirmModalAction();
+    }
+    this.hideConfirmationModal();
+  }
+
+  onModalCancelled(): void {
+    this.pendingToggleRole = null;
+    this.hideConfirmationModal();
+  }
+
+  private hideConfirmationModal(): void {
+    this.showConfirmModal = false;
+    this.confirmModalTitle = '';
+    this.confirmModalMessage = '';
+    this.confirmModalAction = null;
+  }
+
   // View Management
   setView(view: 'list' | 'add' | 'edit'): void {
     this.currentView = view;
-    this.error = null;
-    this.success = null;
+    this.clearAlerts(); // Clear old alerts
     
     // Clear search when switching views
     this.clearPermissionSearch();
@@ -73,6 +108,11 @@ export class RoleManagementComponent implements OnInit {
     } else if (view === 'list') {
       this.selectedRole = null;
     }
+  }
+
+  private clearAlerts(): void {
+    this.error = null;
+    this.success = null;
   }
 
   // Search functionality methods
@@ -157,7 +197,7 @@ export class RoleManagementComponent implements OnInit {
   // Data loading methods
   loadRoles(): void {
     this.isLoading = true;
-    this.error = null;
+    this.clearAlerts();
     
     this.roleService.getAllRoles(this.includeDisabled).subscribe({
       next: (data) => {
@@ -168,7 +208,7 @@ export class RoleManagementComponent implements OnInit {
         this.loadPermissionCounts();
       },
       error: (error) => {
-        this.error = 'Failed to load roles. Please try again.';
+        this.notificationService.showError('Failed to load roles. Please try again.');
         this.isLoading = false;
         console.error('Error loading roles:', error);
       }
@@ -197,12 +237,12 @@ export class RoleManagementComponent implements OnInit {
         next: (permissions) => {
           console.log('Loaded permissions:', permissions);
           this.availablePermissions = permissions;
-          this.updateFilteredPermissions(); // Initialize filtered permissions
+          this.updateFilteredPermissions();
           this.isLoadingPermissions = false;
           resolve();
         },
         error: (error) => {
-          this.error = 'Failed to load available permissions.';
+          this.notificationService.showError('Failed to load available permissions.');
           this.isLoadingPermissions = false;
           console.error('Error loading permissions:', error);
           reject(error);
@@ -218,7 +258,7 @@ export class RoleManagementComponent implements OnInit {
         this.populateEditForm(data);
       },
       error: (error) => {
-        this.error = 'Failed to load role details.';
+        this.notificationService.showError('Failed to load role details.');
         console.error('Error loading role details:', error);
       }
     });
@@ -229,7 +269,7 @@ export class RoleManagementComponent implements OnInit {
     if (this.selectedRole?.id === role.id) {
       this.selectedRole = null;
     } else {
-      this.selectedRole = role as any; // Convert to RolesDetailsResponse for compatibility
+      this.selectedRole = role as any;
     }
   }
 
@@ -330,54 +370,59 @@ export class RoleManagementComponent implements OnInit {
       const selectedPermissions = this.getSelectedPermissions();
       
       if (selectedPermissions.length === 0) {
-        this.error = 'Please select at least one permission.';
+        this.notificationService.showError('Please select at least one permission.');
         return;
       }
 
-      const roleRequest: RoleRequest = {
-        name: this.roleForm.value.name,
-        permissions: selectedPermissions
-      };
+      const roleName = this.roleForm.value.name;
 
-      this.isLoading = true;
-      this.error = null;
-      
-      this.roleService.addRole(roleRequest).subscribe({
-        next: (result) => {
-          console.log('Add role response:', result);
-          
-          // Handle different response formats
-          if (result && (result.isSuccess === true || result === true)) {
-            this.success = 'Role created successfully!';
-            this.loadRoles();
-            setTimeout(() => {
-              this.setView('list');
-              this.success = null;
-            }, 1500);
-          } else if (result && result.isSuccess === false) {
-            this.error = result.error?.description || 'Failed to create role.';
-          } else {
-            // If the response doesn't have isSuccess but the role was created
-            // (sometimes APIs just return the created object)
-            this.success = 'Role created successfully!';
-            this.loadRoles();
-            setTimeout(() => {
-              this.setView('list');
-              this.success = null;
-            }, 1500);
-          }
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error creating role:', error);
-          this.error = 'Failed to create role. Please try again.';
-          this.isLoading = false;
-          
-          // Still reload roles in case the role was actually created
-          this.loadRoles();
-        }
-      });
+      // Show confirmation modal before creating
+      this.showConfirmationModal(
+        'Create New Role',
+        `Are you sure you want to create the role "${roleName}" with ${selectedPermissions.length} permission(s)?`,
+        () => this.executeAddRole()
+      );
     }
+  }
+
+  private executeAddRole(): void {
+    const selectedPermissions = this.getSelectedPermissions();
+    const roleRequest: RoleRequest = {
+      name: this.roleForm.value.name,
+      permissions: selectedPermissions
+    };
+
+    this.isLoading = true;
+    this.clearAlerts();
+    
+    this.roleService.addRole(roleRequest).subscribe({
+      next: (result) => {
+        console.log('Add role response:', result);
+        
+        // Handle different response formats
+        if (result && (result.isSuccess === true || result === true)) {
+          this.notificationService.showSuccess('Role created successfully!');
+          this.loadRoles();
+          this.setView('list');
+        } else if (result && result.isSuccess === false) {
+          this.notificationService.showError(result.error?.description || 'Failed to create role.');
+        } else {
+          // If the response doesn't have isSuccess but the role was created
+          this.notificationService.showSuccess('Role created successfully!');
+          this.loadRoles();
+          this.setView('list');
+        }
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error creating role:', error);
+        this.notificationService.showError('Failed to create role. Please try again.');
+        this.isLoading = false;
+        
+        // Still reload roles in case the role was actually created
+        this.loadRoles();
+      }
+    });
   }
 
   onEditRole(): void {
@@ -385,55 +430,84 @@ export class RoleManagementComponent implements OnInit {
       const selectedPermissions = this.getSelectedPermissions(true);
       
       if (selectedPermissions.length === 0) {
-        this.error = 'Please select at least one permission.';
+        this.notificationService.showError('Please select at least one permission.');
         return;
       }
 
-      const roleRequest: RoleRequest = {
-        name: this.editRoleForm.value.name,
-        permissions: selectedPermissions
-      };
+      const roleName = this.editRoleForm.value.name;
 
-      this.isLoading = true;
-      this.error = null;
-      
-      this.roleService.updateRole(this.selectedRole.id, roleRequest).subscribe({
-        next: (success) => {
-          if (success) {
-            this.success = 'Role updated successfully!';
-            this.loadRoles();
-            setTimeout(() => {
-              this.setView('list');
-              this.success = null;
-            }, 1500);
-          } else {
-            this.error = 'Failed to update role.';
-          }
-          this.isLoading = false;
-        },
-        error: (error) => {
-          this.error = 'Failed to update role. Please try again.';
-          this.isLoading = false;
-          console.error('Error updating role:', error);
-        }
-      });
+      // Show confirmation modal before updating
+      this.showConfirmationModal(
+        'Update Role',
+        `Are you sure you want to update the role "${roleName}" with ${selectedPermissions.length} permission(s)?`,
+        () => this.executeEditRole()
+      );
     }
   }
 
+  private executeEditRole(): void {
+    if (!this.selectedRole) return;
+
+    const selectedPermissions = this.getSelectedPermissions(true);
+    const roleRequest: RoleRequest = {
+      name: this.editRoleForm.value.name,
+      permissions: selectedPermissions
+    };
+
+    this.isLoading = true;
+    this.clearAlerts();
+    
+    this.roleService.updateRole(this.selectedRole.id, roleRequest).subscribe({
+      next: (success) => {
+        if (success) {
+          this.notificationService.showSuccess('Role updated successfully!');
+          this.loadRoles();
+          this.setView('list');
+        } else {
+          this.notificationService.showError('Failed to update role.');
+        }
+        this.isLoading = false;
+      },
+      error: (error) => {
+        this.notificationService.showError('Failed to update role. Please try again.');
+        this.isLoading = false;
+        console.error('Error updating role:', error);
+      }
+    });
+  }
+
   onToggleStatus(role: RolesResponse): void {
+    this.pendingToggleRole = role;
+    const action = role.isDeleted ? 'enable' : 'disable';
+    const actionTitle = role.isDeleted ? 'Enable Role' : 'Disable Role';
+    
+    this.showConfirmationModal(
+      actionTitle,
+      `Are you sure you want to ${action} the role "${role.name}"? This action will ${action} all associated permissions for this role.`,
+      () => this.executeToggleStatus()
+    );
+  }
+
+  private executeToggleStatus(): void {
+    if (!this.pendingToggleRole) return;
+
+    const role = this.pendingToggleRole;
+    const action = role.isDeleted ? 'enabled' : 'disabled';
+
     this.roleService.toggleRoleStatus(role.id).subscribe({
       next: (success) => {
         if (success) {
-          this.success = `Role ${role.isDeleted ? 'enabled' : 'disabled'} successfully!`;
+          this.notificationService.showSuccess(`Role "${role.name}" ${action} successfully!`);
           this.loadRoles();
-          setTimeout(() => this.success = null, 3000);
         } else {
-          this.error = 'Failed to toggle role status.';
+          this.notificationService.showError(`Failed to ${action.slice(0, -1)} role.`);
         }
+        this.pendingToggleRole = null;
       },
       error: (error) => {
-        this.error = 'Failed to toggle role status. Please try again.';
+        this.notificationService.showError(`Failed to ${action.slice(0, -1)} role. Please try again.`);
         console.error('Error toggling role status:', error);
+        this.pendingToggleRole = null;
       }
     });
   }
@@ -441,6 +515,12 @@ export class RoleManagementComponent implements OnInit {
   onToggleIncludeDisabled(): void {
     this.includeDisabled = !this.includeDisabled;
     this.loadRoles();
+    
+    // Show info message about the filter change
+    const message = this.includeDisabled 
+      ? 'Now showing all roles including disabled ones'
+      : 'Now showing only active roles';
+    this.notificationService.showInfo(message);
   }
 
   // Utility methods

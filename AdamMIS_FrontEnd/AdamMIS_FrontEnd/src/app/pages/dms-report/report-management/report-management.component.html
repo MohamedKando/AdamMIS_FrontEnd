@@ -77,7 +77,7 @@
                                     <span class="report-count">{{getReportCountForCategory(category.id)}} reports</span>
                                 </div>
                                 <div class="category-actions">
-                                    <button class="btn btn-sm btn-secondary" (click)="editCategory(category)">
+                                    <button class="btn btn-sm btn-secondary" (click)="openEditModal(category)">
                                         <i class="icon">✏️</i> Edit
                                     </button>
                                     <button class="btn btn-sm btn-danger" (click)="initiateDeleteCategory(category.id)">
@@ -91,6 +91,48 @@
                         <div class="no-results" *ngIf="filteredCategories.length === 0 && categorySearchTerm">
                             <p>No categories found matching "{{categorySearchTerm}}"</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Category Modal -->
+            <div class="modal-overlay" *ngIf="isEditModalOpen" (click)="closeEditModal()">
+                <div class="modal-content" (click)="$event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Edit Category</h3>
+                        <button class="close-btn" (click)="closeEditModal()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form (ngSubmit)="updateCategory()" #editCategoryForm="ngForm">
+                            <div class="form-group">
+                                <label for="editCategoryName">Category Name</label>
+                                <input type="text" id="editCategoryName" [(ngModel)]="editingCategory.name" 
+                                    name="editCategoryName" required placeholder="Enter category name">
+                            </div>
+                            <div class="form-group">
+                                <label for="editCategoryDescription">Description</label>
+                                <textarea id="editCategoryDescription" [(ngModel)]="editingCategory.description"
+                                    name="editCategoryDescription" placeholder="Enter category description"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="editCategoryColor">Color</label>
+                                <div class="color-input-group">
+                                    <input type="color" id="editCategoryColor" [(ngModel)]="editingCategory.color" 
+                                        name="editCategoryColor">
+                                    <div class="color-preview" [style.background-color]="editingCategory.color"></div>
+                                </div>
+                            </div>
+                            <div class="modal-actions">
+                                <button type="button" class="btn btn-secondary" (click)="closeEditModal()">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="btn btn-primary"
+                                    [disabled]="!editCategoryForm.valid || isUpdatingCategory">
+                                    <span *ngIf="!isUpdatingCategory">Update Category</span>
+                                    <span *ngIf="isUpdatingCategory">Updating...</span>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -557,14 +599,14 @@
                                                     </td>
                                                     <td>
                                                         <div class="action-buttons">
-                                                            <button class="btn btn-sm btn-secondary"
+                                                         <!--   <button class="btn btn-sm btn-secondary"
                                                                 (click)="viewAssignmentDetails(assignment)"
                                                                 title="View Details">
                                                                 <i class="icon">👁️</i>
-                                                            </button>
+                                                            </button>-->
                                                             <button class="btn btn-sm btn-danger"
                                                                 (click)="initiateRemoveAssignment(assignment.id)"
-                                                                title="Remove Assignment">
+                                                                 title="Remove Assignment">
                                                                 <i class="icon">🗑️</i>
                                                             </button>
                                                         </div>

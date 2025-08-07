@@ -243,7 +243,7 @@ export class ReportViewingComponent implements OnInit {
         this.generationStatus = 'completed';
         this.generationMessage = response.message;
         
-        alert(`Report generated successfully: ${response.fileName}\nGenerated at: ${new Date(response.generatedAt).toLocaleString()}`);
+        //alert(`Report generated successfully: ${response.fileName}\nGenerated at: ${new Date(response.generatedAt).toLocaleString()}`);
         
         setTimeout(() => {
           this.generationStatus = '';

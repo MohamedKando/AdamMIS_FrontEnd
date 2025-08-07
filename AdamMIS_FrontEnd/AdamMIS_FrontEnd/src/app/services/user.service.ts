@@ -14,13 +14,14 @@ export interface CreateUserRequest {
 export interface UserResponse {
   id: string;
   userName: string;
-  departmentName: string;
-  title: string;
-  email: string;
+  departmentName?: string;
+  title?: string;
+  userPhone?: string;
+  internalPhone?: string;
   isDisabled: boolean;
   roles: string[];
-  photoPath?: string; // Add photo path
-    departmentId?: number;
+  photoPath?: string;
+  departmentId?: number;
   department?: {
     id: number;
     name: string;
@@ -49,7 +50,8 @@ export interface UpdateUserProfileRequest {
   userName?: string;
   title?: string;
   department?: string;
-  email?: string;
+  internalPhone?: string;
+  userPhone?: string; // Note: Your backend DTO has "USerPhone" with capital S, you might want to fix that
 }
 export interface UserChangePasswordRequest {
   oldPassword: string;

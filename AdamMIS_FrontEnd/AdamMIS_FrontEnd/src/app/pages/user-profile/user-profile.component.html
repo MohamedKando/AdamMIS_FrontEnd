@@ -111,31 +111,46 @@
               type="text" 
               id="userName"
               formControlName="userName"
-              class="form-control"
-              [readonly]="!isEditing"
-              [class.readonly]="!isEditing">
-            <div *ngIf="usernameErrors" class="field-error">
-              <span>{{ getUsernameErrorMessage() }}</span>
+              class="form-control readonly"
+              readonly>
+            <div class="field-info">
+              <small class="text-muted">Username cannot be changed</small>
             </div>
           </div>
 
-          <!-- Email -->
+          <!-- Internal Phone -->
           <div class="form-group">
-            <label for="email">Email *</label>
+            <label for="internalPhone">Internal Phone</label>
             <input 
-              type="email" 
-              id="email"
-              formControlName="email"
+              type="tel" 
+              id="internalPhone"
+              formControlName="internalPhone"
               class="form-control"
-              [readonly]="!isEditing"
-              [class.readonly]="!isEditing">
-            <div *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched" class="field-error">
-              <span *ngIf="profileForm.get('email')?.errors?.['required']">Email is required</span>
-              <span *ngIf="profileForm.get('email')?.errors?.['email']">Please enter a valid email</span>
+             
+              [class.readonly]="!isEditing"
+              [readonly]="!isEditing || !isAdmin"
+              [class.readonly]="!isEditing || !isAdmin"
+              placeholder="e.g. 0123">
+            <div *ngIf="!isAdmin" class="field-info">
+              <small class="text-muted">Only administrators can edit Internal Phone</small>
             </div>
+            
           </div>
 
-          <!-- Title -->
+          <!-- User Phone -->
+          <div class="form-group">
+            <label for="userPhone">User Phone</label>
+            <input 
+              type="tel" 
+              id="userPhone"
+              formControlName="userPhone"
+              class="form-control"
+              [readonly]="!isEditing"
+              [class.readonly]="!isEditing"
+              placeholder="e.g. +01234567890">
+          </div>
+
+          <!-- Title - Only editable by admin -->
           <div class="form-group">
             <label for="title">Title</label>
             <input 
@@ -143,15 +158,18 @@
               id="title"
               formControlName="title"
               class="form-control"
-              [readonly]="!isEditing"
-              [class.readonly]="!isEditing">
+              [readonly]="!isEditing || !isAdmin"
+              [class.readonly]="!isEditing || !isAdmin">
+            <div *ngIf="!isAdmin" class="field-info">
+              <small class="text-muted">Only administrators can edit title</small>
+            </div>
           </div>
 
-          <!-- Department -->
+          <!-- Department - Only editable by admin -->
           <div class="form-group">
             <label for="department">Department</label>
             <select 
-              *ngIf="isEditing" 
+              *ngIf="isEditing && isAdmin" 
               id="department"
               formControlName="department"
               class="form-control">
@@ -159,11 +177,14 @@
               <option *ngFor="let dept of departments" [value]="dept.name">{{ dept.name }}</option>
             </select>
             <input 
-              *ngIf="!isEditing"
+              *ngIf="!isEditing || !isAdmin"
               type="text" 
               [value]="user.departmentName || 'Not assigned'"
               readonly 
               class="form-control readonly">
+            <div *ngIf="!isAdmin" class="field-info">
+              <small class="text-muted">Only administrators can edit department</small>
+            </div>
           </div>
 
           <!-- Roles (Read-only) -->
@@ -333,3 +354,4 @@
 
   </div>
 </div>
+<!-- Remove Assignment Modal -->

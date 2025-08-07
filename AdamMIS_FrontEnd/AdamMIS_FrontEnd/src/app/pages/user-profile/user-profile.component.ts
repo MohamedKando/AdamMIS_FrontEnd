@@ -55,10 +55,12 @@ export class UserProfileComponent implements OnInit {
     this.loadDepartments();
   }
 
+
   initializeForms(): void {
     this.profileForm = this.fb.group({
-      userName: ['', [Validators.required, Validators.minLength(3)]],
-      email: ['', [Validators.required, Validators.email]],
+      userName: [''], // Remove validators since it's readonly
+      internalPhone: [''],
+      userPhone: [''],
       title: [''],
       department: ['']
     });
@@ -74,7 +76,6 @@ export class UserProfileComponent implements OnInit {
       confirmNewPassword: ['', [Validators.required]]
     }, { validators: this.adminPasswordMatchValidator });
   }
-
   getDefaultPhotoUrl(): string {
     return this.userService.getPhotoUrl(null);
   }
@@ -154,16 +155,19 @@ export class UserProfileComponent implements OnInit {
     });
   }
 
-  populateForm(): void {
-    if (this.user) {
-      this.profileForm.patchValue({
-        userName: this.user.userName,
-        email: this.user.email,
-        title: this.user.title,
-        department: this.user.departmentName
-      });
-    }
+// In your user-profile.component.ts file, find this method and replace it:
+
+populateForm(): void {
+  if (this.user) {
+    this.profileForm.patchValue({
+      userName: this.user.userName,
+      internalPhone: this.user.internalPhone,  // ← Add this line
+      userPhone: this.user.userPhone,          // ← Add this line  
+      title: this.user.title,
+      department: this.user.departmentName
+    });
   }
+}
 
   // Photo upload methods
   onPhotoSelect(): void {
@@ -292,47 +296,55 @@ export class UserProfileComponent implements OnInit {
     this.successMessage = '';
   }
 
- onUpdateProfile(): void {
-  if (this.profileForm.valid) {
-    this.loading = true;
-    this.error = '';
-    
-    const updateRequest: UpdateUserProfileRequest = {
-      userName: this.profileForm.value.userName,
-      email: this.profileForm.value.email,
-      title: this.profileForm.value.title,
-      department: this.profileForm.value.department
-    };
+   onUpdateProfile(): void {
+    if (this.profileForm.valid) {
+      this.loading = true;
+      this.error = '';
+      
+      // Build update request based on admin privileges
+      const updateRequest: UpdateUserProfileRequest = {
+        userName: this.user?.userName, // Keep original username (not editable)
+        internalPhone: this.profileForm.value.internalPhone,
+        userPhone: this.profileForm.value.userPhone
+      };
 
-    console.log('Current photoPath before update:', this.user?.photoPath);
-
-    this.userService.updateUserProfile(this.userId, updateRequest).subscribe({
-      next: (updatedUser) => {
-        console.log('Server response:', updatedUser);
-        console.log('Server returned photoPath:', updatedUser.photoPath);
-        
-        const currentPhotoPath = this.user?.photoPath;
-        this.user = {
-          ...updatedUser,
-          photoPath: updatedUser.photoPath || currentPhotoPath
-        } as UserResponse;
-        
-        console.log('Final user object photoPath:', this.user.photoPath);
-        
-        this.successMessage = 'Profile updated successfully';
-        this.isEditing = false;
-        this.loading = false;
-      },
-      error: (err) => {
-         {
-          this.error = err.error.detail || 'Failed to update profile';
-        } 
-        this.loading = false;
-        console.error('Error updating profile:', err);
+      // Only include title and department if user is admin
+      if (this.isAdmin) {
+        updateRequest.title = this.profileForm.value.title;
+        updateRequest.department = this.profileForm.value.department;
+      } else {
+        // Keep original values for non-admin users
+        updateRequest.title = this.user?.title;
+        updateRequest.department = this.user?.departmentName;
       }
-    });
+
+      console.log('Current photoPath before update:', this.user?.photoPath);
+
+      this.userService.updateUserProfile(this.userId, updateRequest).subscribe({
+        next: (updatedUser) => {
+          console.log('Server response:', updatedUser);
+          console.log('Server returned photoPath:', updatedUser.photoPath);
+          
+          const currentPhotoPath = this.user?.photoPath;
+          this.user = {
+            ...updatedUser,
+            photoPath: updatedUser.photoPath || currentPhotoPath
+          } as UserResponse;
+          
+          console.log('Final user object photoPath:', this.user.photoPath);
+          
+          this.successMessage = 'Profile updated successfully';
+          this.isEditing = false;
+          this.loading = false;
+        },
+        error: (err) => {
+          this.error = err.error.detail || 'Failed to update profile';
+          this.loading = false;
+          console.error('Error updating profile:', err);
+        }
+      });
+    }
   }
-}
 
 onChangePassword(): void {
   if (this.passwordForm.valid) {

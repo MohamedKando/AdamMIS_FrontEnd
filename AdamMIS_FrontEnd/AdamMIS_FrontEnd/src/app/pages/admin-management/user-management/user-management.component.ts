@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { UserService, UserResponse, CreateUserRequest, RolesResponse, UserRoleRequest } from '../../../services/user.service';
+import { UserService, UserResponse, CreateUserRequest, RolesResponse, UserRoleRequest,DepartmentResponse } from '../../../services/user.service';
+import { NotificationService } from '../../../Notfications/notification.service';
 
 @Component({
   selector: 'app-user-management',
@@ -16,10 +17,15 @@ export class UserManagementComponent implements OnInit {
   activeTab: 'all' | 'banned' = 'all';
   showAddUserModal = false;
   showRoleModal = false;
-  showDeleteConfirm = false;
   
+  // Confirmation modal properties
+  showConfirmation = false;
+  confirmationTitle = '';
+  confirmationMessage = '';
+  confirmButtonText = '';
+  pendingAction: (() => void) | null = null;
+  departments: DepartmentResponse [] = [];
   selectedUser: UserResponse | null = null;
-  userToDelete: UserResponse | null = null;
   
   addUserForm: FormGroup;
   roleForm: FormGroup;
@@ -27,27 +33,39 @@ export class UserManagementComponent implements OnInit {
   loading = false;
   searchTerm = '';
 
-constructor(
-  private userService: UserService,
-  private fb: FormBuilder
-) {
-  this.addUserForm = this.fb.group({
-    userName: ['', [Validators.required, Validators.minLength(3)]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
-    departmentName: ['', Validators.required], // Changed to match interface
-    title: ['', Validators.nullValidator], // Fixed validator
-    email: ['', [Validators.email,  Validators.nullValidator]],
-    roles: [[], Validators.required]
-  });
+  constructor(
+    private userService: UserService,
+    private fb: FormBuilder,
+    private notificationService: NotificationService
+  ) {
+this.addUserForm = this.fb.group({
+  userName: ['', [Validators.required, Validators.minLength(3)]],
+  password: ['', [Validators.required, Validators.minLength(6)]],
+  department: ['', Validators.required], // Changed from 'departmentName' to 'department'
+  title: ['', Validators.nullValidator],
+ 
+  roles: [[], Validators.required]
+});
 
-  this.roleForm = this.fb.group({
-    roleIds: [[], Validators.required]
-  });
-}
+    this.roleForm = this.fb.group({
+      roleIds: [[], Validators.required]
+    });
+  }
 
+  loadDepartments(): void {
+    this.userService.getDepartments().subscribe({
+      next: (departments) => {
+        this.departments = departments;
+      },
+      error: (err) => {
+        console.error('Error loading departments:', err);
+      }
+    });
+  }
   ngOnInit(): void {
     this.loadUsers();
     this.loadRoles();
+    this.loadDepartments();
     console.log('Component initialized');
   }
 
@@ -75,7 +93,7 @@ constructor(
       error: (error) => {
         console.error('Error loading users:', error);
         this.loading = false;
-        alert('Failed to load users. Please check your connection and try again.');
+        this.notificationService.showError('Failed to load users. Please check your connection and try again.');
       }
     });
   }
@@ -98,7 +116,7 @@ constructor(
       error: (error) => {
         console.error('Error loading roles:', error);
         this.roles = [];
-        console.warn('Roles could not be loaded. Role management will be limited.');
+        this.notificationService.showError('Roles could not be loaded. Role management will be limited.');
       }
     });
   }
@@ -114,7 +132,7 @@ openAddUserModal(): void {
   this.addUserForm.patchValue({
     userName: '',
     password: '',
-    departmentName: '', // Changed to match interface
+    department: '', // Changed from 'departmentName' to 'department'
     title: '',
     roles: []
   });
@@ -124,10 +142,19 @@ openAddUserModal(): void {
     this.showAddUserModal = false;
   }
 
- onSubmitAddUser(): void {
+  onSubmitAddUser(): void {
   if (this.addUserForm.valid) {
     this.loading = true;
-    const request: CreateUserRequest = this.addUserForm.value;
+    
+    // Map the form values to match the expected API format
+    const formValues = this.addUserForm.value;
+    const request: CreateUserRequest = {
+      ...formValues,
+      departmentName: formValues.department // Map 'department' to 'departmentName'
+    };
+    
+    // Remove the temporary 'department' field if it exists
+    delete (request as any).department;
     
     console.log('Adding user:', request);
     
@@ -142,7 +169,7 @@ openAddUserModal(): void {
           userName: userData.userName,
           isDisabled: userData.isDisabled || false,
           departmentName: userData.departmentName,
-          email: userData.email || '', // Ensure email is set
+          
           title: userData.title,
           roles: userData.roles || request.roles || []
         };
@@ -151,7 +178,7 @@ openAddUserModal(): void {
         this.updateUserLists();
         
         this.closeAddUserModal();
-        alert('User added successfully!');
+        this.notificationService.showSuccess(`User "${userData.userName}" added successfully!`);
       },
       error: (error) => {
         console.error('Error adding user:', error);
@@ -172,7 +199,7 @@ openAddUserModal(): void {
           errorMessage = error.message;
         }
         
-        alert(errorMessage);
+        this.notificationService.showError(errorMessage);
       }
     });
   } else {
@@ -180,13 +207,47 @@ openAddUserModal(): void {
     Object.keys(this.addUserForm.controls).forEach(key => {
       this.addUserForm.get(key)?.markAsTouched();
     });
+    this.notificationService.showError('Please fill in all required fields correctly.');
   }
 }
+
+  showBanConfirmation(user: UserResponse): void {
+    if (!user || !user.id) {
+      console.error('Invalid user data:', user);
+      this.notificationService.showError('Invalid user data. Please refresh the page and try again.');
+      return;
+    }
+
+    const action = user.isDisabled ? 'unban' : 'ban';
+    const actionCapitalized = user.isDisabled ? 'Unban' : 'Ban';
+    
+    this.confirmationTitle = `${actionCapitalized} User`;
+    this.confirmationMessage = `Are you sure you want to ${action} user "${user.userName}"? ${
+      user.isDisabled ? 'This will enable the user\'s account.' : 'This action will disable the user\'s account.'
+    }`;
+    this.confirmButtonText = `${actionCapitalized} User`;
+    
+    this.pendingAction = () => this.toggleUserStatus(user);
+    this.showConfirmation = true;
+  }
+
+  onConfirmAction(): void {
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
+    this.showConfirmation = false;
+  }
+
+  onCancelAction(): void {
+    this.pendingAction = null;
+    this.showConfirmation = false;
+  }
 
   toggleUserStatus(user: UserResponse): void {
     if (!user || !user.id) {
       console.error('Invalid user data:', user);
-      alert('Invalid user data. Please refresh the page and try again.');
+      this.notificationService.showError('Invalid user data. Please refresh the page and try again.');
       return;
     }
 
@@ -194,6 +255,7 @@ openAddUserModal(): void {
     
     // Show loading state for the specific action
     const previousState = user.isDisabled;
+    const action = previousState ? 'unbanned' : 'banned';
     
     this.userService.toggleUserStatus(user.id).subscribe({
       next: () => {
@@ -206,12 +268,11 @@ openAddUserModal(): void {
           this.updateUserLists();
         }
         
-        const action = previousState ? 'enabled' : 'banned';
-        alert(`User ${action} successfully!`);
+        this.notificationService.showSuccess(`User "${user.userName}" ${action} successfully!`);
       },
       error: (error) => {
         console.error('Error toggling user status:', error);
-        alert('Error updating user status. Please check your connection and try again.');
+        this.notificationService.showError('Error updating user status. Please check your connection and try again.');
       }
     });
   }
@@ -219,7 +280,7 @@ openAddUserModal(): void {
   openRoleModal(user: UserResponse): void {
     if (!user || !user.id) {
       console.error('Invalid user data:', user);
-      alert('Invalid user data. Please refresh the page and try again.');
+      this.notificationService.showError('Invalid user data. Please refresh the page and try again.');
       return;
     }
 
@@ -286,12 +347,12 @@ openAddUserModal(): void {
 
           this.closeRoleModal();
           this.loading = false;
-          alert('Roles updated successfully!');
+          this.notificationService.showSuccess(`Roles updated successfully for "${this.selectedUser!.userName}"!`);
         },
         error: (error) => {
           console.error('Error updating user roles:', error);
           this.loading = false;
-          alert('Error updating user roles. Please check your connection and try again.');
+          this.notificationService.showError('Error updating user roles. Please check your connection and try again.');
         }
       });
     } else {
@@ -299,73 +360,37 @@ openAddUserModal(): void {
       Object.keys(this.roleForm.controls).forEach(key => {
         this.roleForm.get(key)?.markAsTouched();
       });
+      this.notificationService.showError('Please select at least one role.');
     }
   }
 
-  // Fixed: Remove duplicate delete functionality, only keep ban/unban
-  confirmBanUser(user: UserResponse): void {
-    if (!user || !user.id) {
-      console.error('Invalid user data:', user);
-      alert('Invalid user data. Please refresh the page and try again.');
-      return;
+  get filteredUsers(): UserResponse[] {
+    const userList = this.activeTab === 'all' ? this.users : this.bannedUsers;
+    
+    if (!this.searchTerm.trim()) {
+      return userList;
     }
-
-    this.userToDelete = user;
-    this.showDeleteConfirm = true;
-  }
-
-  cancelDelete(): void {
-    this.showDeleteConfirm = false;
-    this.userToDelete = null;
-  }
-
-  deleteUser(): void {
-    if (this.userToDelete) {
-      this.toggleUserStatus(this.userToDelete);
-      this.cancelDelete();
-    }
-  }
-
-  // New method for user profile navigation
-  viewUserProfile(user: UserResponse): void {
-    if (!user || !user.id) {
-      console.error('Invalid user data:', user);
-      alert('Invalid user data. Please refresh the page and try again.');
-      return;
-    }
-
-    // TODO: Navigate to user profile component
-    console.log('Navigate to user profile:', user);
-    alert(`User profile feature will be implemented soon for user: ${user.userName}`);
-  }
-
-get filteredUsers(): UserResponse[] {
-  const userList = this.activeTab === 'all' ? this.users : this.bannedUsers;
-  
-  if (!this.searchTerm.trim()) {
-    return userList;
-  }
-  
-  const searchTermLower = this.searchTerm.toLowerCase().trim();
-  
-  return userList.filter(user => {
-    if (!user) return false;
     
-    const usernameMatch = user.userName && 
-      user.userName.toLowerCase().includes(searchTermLower);
+    const searchTermLower = this.searchTerm.toLowerCase().trim();
     
-    const departmentMatch = user.departmentName &&
-      user.departmentName.toLowerCase().includes(searchTermLower);
-    
-    const titleMatch = user.title &&
-      user.title.toLowerCase().includes(searchTermLower);
-    
-    const rolesMatch = user.roles && Array.isArray(user.roles) &&
-      user.roles.some(role => role && role.toLowerCase().includes(searchTermLower));
-    
-    return usernameMatch || departmentMatch || titleMatch || rolesMatch;
-  });
-}
+    return userList.filter(user => {
+      if (!user) return false;
+      
+      const usernameMatch = user.userName && 
+        user.userName.toLowerCase().includes(searchTermLower);
+      
+      const departmentMatch = user.departmentName &&
+        user.departmentName.toLowerCase().includes(searchTermLower);
+      
+      const titleMatch = user.title &&
+        user.title.toLowerCase().includes(searchTermLower);
+      
+      const rolesMatch = user.roles && Array.isArray(user.roles) &&
+        user.roles.some(role => role && role.toLowerCase().includes(searchTermLower));
+      
+      return usernameMatch || departmentMatch || titleMatch || rolesMatch;
+    });
+  }
 
   getRoleNames(user: UserResponse): string {
     if (!user || !user.roles || !Array.isArray(user.roles) || user.roles.length === 0) {
@@ -436,6 +461,7 @@ get filteredUsers(): UserResponse[] {
 
   refreshData(): void {
     console.log('Refreshing data...');
+    this.notificationService.showInfo('Refreshing user data...');
     this.loadUsers();
     this.loadRoles();
   }

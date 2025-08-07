@@ -26,6 +26,7 @@ import { UserProfileComponent } from './pages/user-profile/user-profile.componen
 import { ToastComponent } from './Notfications/toast.component';
 import { ConfirmationModalComponent } from './Notfications/confirmation-modal.component';
 import { NotificationService } from './Notfications/notification.service';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 @NgModule({
   declarations: [
@@ -52,7 +53,8 @@ import { NotificationService } from './Notfications/notification.service';
     FormsModule,
     ReactiveFormsModule,
     CommonModule,
-    HttpClientModule
+    HttpClientModule,
+    BrowserAnimationsModule
   ],
   providers: [
     {

@@ -200,5 +200,19 @@
     <main class="main-content" [class.nav-collapsed]="isNavCollapsed">
         <router-outlet></router-outlet>
     </main>
+
+    <!-- Toast Notifications -->
+    <app-toast></app-toast>
+
+    <!-- Logout Confirmation Modal -->
+    <app-confirmation-modal
+        [isVisible]="showLogoutConfirmation"
+        title="Confirm Logout"
+        message="Are you sure you want to logout? You will need to login again to access your account."
+        confirmText="Logout"
+        cancelText="Stay Logged In"
+        (confirmed)="onLogoutConfirmed()"
+        (cancelled)="onLogoutCancelled()">
+    </app-confirmation-modal>
 </body>
 </html>
