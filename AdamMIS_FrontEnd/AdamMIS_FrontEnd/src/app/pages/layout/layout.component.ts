@@ -286,19 +286,14 @@ export class LayoutComponent implements OnInit, OnDestroy {
       // Reset the modal visibility first
       this.showLogoutConfirmation = false;
       
-      // Show info toast that logout is processing
-      this.notificationService.showInfo('Logging out...', 1000);
-      
-      // Perform logout
+      // Perform logout immediately
       this.authService.logout();
       
       // Show success toast
-      this.notificationService.showSuccess('Successfully logged out. See you soon!', 3000);
+      this.notificationService.showSuccess('Successfully logged out. See you soon!', 2000);
       
-      // Navigate to login page after a brief delay to show the success message
-      setTimeout(() => {
-        this.router.navigate(['/login']);
-      }, 1500);
+      // Navigate to login page immediately - no delay needed
+      this.router.navigate(['/login']);
       
     } catch (error) {
       // Reset modal visibility on error too

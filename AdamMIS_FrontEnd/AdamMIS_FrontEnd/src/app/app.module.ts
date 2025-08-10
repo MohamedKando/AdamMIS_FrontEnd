@@ -27,6 +27,7 @@ import { ToastComponent } from './Notfications/toast.component';
 import { ConfirmationModalComponent } from './Notfications/confirmation-modal.component';
 import { NotificationService } from './Notfications/notification.service';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { LogsComponent } from './pages/logs/logs.component';
 
 @NgModule({
   declarations: [
@@ -44,7 +45,8 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
     UserProfileComponent,
     ReportManagementComponent,
     ToastComponent,
-    ConfirmationModalComponent
+    ConfirmationModalComponent,
+    LogsComponent
   ],
   imports: [
     BrowserModule,

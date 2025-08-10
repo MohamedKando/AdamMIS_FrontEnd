@@ -1,0 +1,331 @@
+<div class="activity-logs-container">
+  <div class="header">
+    <h2 class="title">
+      <i class="fas fa-history me-2"></i>
+      Activity Logs
+    </h2>
+    <div class="header-actions">
+      <button 
+        class="btn btn-outline-primary btn-sm me-2" 
+        (click)="refresh()"
+        [disabled]="loading">
+        <i class="fas fa-sync-alt" [class.fa-spin]="loading"></i>
+        Refresh
+      </button>
+      <button 
+        class="btn btn-outline-success btn-sm" 
+        (click)="export()"
+        [disabled]="loading || logs.length === 0">
+        <i class="fas fa-download"></i>
+        Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Enhanced Filters -->
+  <div class="filters-card">
+    <div class="filters-header">
+      <h5 class="mb-0">
+        <i class="fas fa-filter me-2"></i>
+        Filters
+      </h5>
+      <button 
+        class="btn btn-link btn-sm text-muted p-0" 
+        (click)="clearFilters()"
+        *ngIf="hasActiveFilters()">
+        <i class="fas fa-times-circle me-1"></i>
+        Clear All
+      </button>
+    </div>
+    
+    <form [formGroup]="filterForm" class="filters-form">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">
+            <i class="fas fa-user me-1"></i>
+            Username
+          </label>
+          <input 
+            type="text" 
+            class="form-control" 
+            formControlName="username"
+            placeholder="Search by username..."
+            autocomplete="off">
+          <div class="form-text">Search for specific user activity</div>
+        </div>
+        
+        <div class="col-md-3">
+          <label class="form-label">
+            <i class="fas fa-cog me-1"></i>
+            Action Type
+          </label>
+          <select class="form-select" formControlName="actionType">
+            <option *ngFor="let action of actionTypes" [value]="action.value">
+              {{ action.label }}
+            </option>
+          </select>
+          <div class="form-text">Filter by action performed</div>
+        </div>
+        
+        <div class="col-md-3">
+          <label class="form-label">
+            <i class="fas fa-calendar me-1"></i>
+            Start Date
+          </label>
+          <input 
+            type="datetime-local" 
+            class="form-control" 
+            formControlName="startDate">
+          <div class="form-text">From date and time</div>
+        </div>
+        
+        <div class="col-md-3">
+          <label class="form-label">
+            <i class="fas fa-calendar-check me-1"></i>
+            End Date
+          </label>
+          <input 
+            type="datetime-local" 
+            class="form-control" 
+            formControlName="endDate">
+          <div class="form-text">To date and time</div>
+        </div>
+      </div>
+      
+      <!-- Quick Filter Buttons -->
+      <div class="quick-filters mt-3">
+        <span class="quick-filter-label">Quick Filters:</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm me-2" (click)="setDateFilter('today')">Today</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm me-2" (click)="setDateFilter('week')">This Week</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm me-2" (click)="setDateFilter('month')">This Month</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Enhanced Results Summary -->
+  <div class="results-summary-card">
+    <div class="results-info">
+      <div class="results-count">
+        <strong>{{ totalCount }}</strong> 
+        <span class="text-muted">activity logs found</span>
+        <span class="badge bg-primary ms-2" *ngIf="hasActiveFilters()">Filtered</span>
+      </div>
+      <div class="results-meta" *ngIf="logs.length > 0">
+        Showing {{ ((currentPage - 1) * pageSize) + 1 }} to {{ Math.min(currentPage * pageSize, totalCount) }} of {{ totalCount }} results
+      </div>
+    </div>
+    <div class="results-actions">
+      <div class="btn-group btn-group-sm" role="group">
+        <button class="btn btn-outline-secondary" [class.active]="pageSize === 10" (click)="changePageSize(10)">10</button>
+        <button class="btn btn-outline-secondary" [class.active]="pageSize === 25" (click)="changePageSize(25)">25</button>
+        <button class="btn btn-outline-secondary" [class.active]="pageSize === 50" (click)="changePageSize(50)">50</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enhanced Logs List -->
+  <div class="logs-container" *ngIf="!loading; else loadingTemplate">
+    <div 
+      class="log-item" 
+      *ngFor="let log of logs; trackBy: trackByLogId"
+      [class.expanded]="isExpanded(log.id)">
+      
+      <div class="log-header" (click)="toggleDetails(log.id)">
+        <!-- User Avatar and Main Info -->
+        <div class="log-user-section">
+          <div class="user-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="user-info">
+            <div class="username">{{ log.username }}</div>
+            <div class="user-meta">
+              <span class="log-time">
+                <i class="fas fa-clock me-1"></i>
+                {{ formatDate(log.timestamp) }}
+              </span>
+              <span class="log-ip">
+                <i class="fas fa-globe me-1"></i>
+                {{ log.ipAddress }}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Action and Description -->
+        <div class="log-content">
+          <div class="log-main">
+            <div class="log-description">{{ log.description }}</div>
+            <div class="log-badges">
+              <span 
+                class="badge log-action-badge"
+                [class]="'bg-' + getActionColor(log.actionType)">
+                <i [class]="getActionIcon(log.actionType)" class="me-1"></i>
+                {{ log.actionType }}
+              </span>
+              <span class="badge bg-light text-dark entity-badge">
+                <i class="fas fa-tag me-1"></i>
+                {{ log.entityName }}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Toggle Button -->
+        <div class="log-toggle">
+          <button class="btn btn-link btn-sm text-muted" type="button">
+            <i class="fas fa-chevron-down toggle-icon" [class.rotated]="isExpanded(log.id)"></i>
+            <span class="ms-1">{{ isExpanded(log.id) ? 'Hide' : 'Show' }} Details</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Enhanced Expanded Details -->
+      <div class="log-details" *ngIf="isExpanded(log.id)">
+        <div class="details-container">
+          <div class="details-header">
+            <h6 class="mb-3">
+              <i class="fas fa-info-circle me-2"></i>
+              Activity Details
+            </h6>
+          </div>
+          
+          <div class="details-grid">
+            <div class="detail-section">
+              <h6 class="detail-section-title">
+                <i class="fas fa-fingerprint me-1"></i>
+                Entity Information
+              </h6>
+              <div class="detail-item">
+                <strong>Entity ID:</strong>
+                <span class="text-monospace entity-id">{{ log.entityId }}</span>
+                <button class="btn btn-link btn-sm p-0 ms-2" (click)="copyToClipboard(log.entityId)" title="Copy to clipboard">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
+              <div class="detail-item">
+                <strong>Entity Type:</strong>
+                <span class="badge bg-secondary">{{ log.entityName }}</span>
+              </div>
+            </div>
+            
+            <div class="detail-section" *ngIf="log.oldValues">
+              <h6 class="detail-section-title">
+                <i class="fas fa-history me-1"></i>
+                Previous Values
+              </h6>
+              <div class="json-container">
+                <div class="json-header">
+                  <span>Before Changes</span>
+                  <button class="btn btn-link btn-sm p-0" (click)="copyToClipboard(log.oldValues)" title="Copy JSON">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </div>
+                <pre class="json-display old-values">{{ formatJson(log.oldValues) }}</pre>
+              </div>
+            </div>
+            
+            <div class="detail-section" *ngIf="log.newValues">
+              <h6 class="detail-section-title">
+                <i class="fas fa-edit me-1"></i>
+                Updated Values
+              </h6>
+              <div class="json-container">
+                <div class="json-header">
+                  <span>After Changes</span>
+                  <button class="btn btn-link btn-sm p-0" (click)="copyToClipboard(log.newValues)" title="Copy JSON">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </div>
+                <pre class="json-display new-values">{{ formatJson(log.newValues) }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Enhanced Empty State -->
+    <div class="empty-state" *ngIf="logs.length === 0">
+      <div class="empty-illustration">
+        <i class="fas fa-search-minus"></i>
+      </div>
+      <h4>No Activity Logs Found</h4>
+      <p class="text-muted mb-3">
+        <span *ngIf="hasActiveFilters(); else noData">
+          No logs match your current filter criteria. Try adjusting your filters or clearing them to see more results.
+        </span>
+        <ng-template #noData>
+          There are no activity logs to display. Activity will appear here as users interact with the system.
+        </ng-template>
+      </p>
+      <button class="btn btn-outline-primary" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+        <i class="fas fa-times-circle me-2"></i>
+        Clear All Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading Template -->
+  <ng-template #loadingTemplate>
+    <div class="loading-container">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-3 text-muted">Loading activity logs...</p>
+    </div>
+  </ng-template>
+
+  <!-- Enhanced Pagination -->
+  <nav aria-label="Activity logs pagination" *ngIf="totalPages > 1 && !loading" class="pagination-nav">
+    <div class="pagination-info">
+      <span class="text-muted">
+        Showing {{ ((currentPage - 1) * pageSize) + 1 }} to {{ Math.min(currentPage * pageSize, totalCount) }} of {{ totalCount }} entries
+      </span>
+    </div>
+    
+    <ul class="pagination justify-content-center mb-0">
+      <li class="page-item" [class.disabled]="currentPage === 1">
+        <button class="page-link" (click)="onPageChange(1)" [disabled]="currentPage === 1" title="First page">
+          <i class="fas fa-angle-double-left"></i>
+        </button>
+      </li>
+      <li class="page-item" [class.disabled]="currentPage === 1">
+        <button class="page-link" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1" title="Previous page">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+      </li>
+      
+      <li 
+        class="page-item" 
+        *ngFor="let page of getPages()" 
+        [class.active]="page === currentPage">
+        <button class="page-link" (click)="onPageChange(page)">{{ page }}</button>
+      </li>
+      
+      <li class="page-item" [class.disabled]="currentPage === totalPages">
+        <button class="page-link" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage === totalPages" title="Next page">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </li>
+      <li class="page-item" [class.disabled]="currentPage === totalPages">
+        <button class="page-link" (click)="onPageChange(totalPages)" [disabled]="currentPage === totalPages" title="Last page">
+          <i class="fas fa-angle-double-right"></i>
+        </button>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Toast for notifications -->
+  <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+    <div class="toast" [class.show]="showToast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header">
+        <i class="fas fa-info-circle text-primary me-2"></i>
+        <strong class="me-auto">Activity Logs</strong>
+        <button type="button" class="btn-close" (click)="hideToast()"></button>
+      </div>
+      <div class="toast-body">
+        {{ toastMessage }}
+      </div>
+    </div>
+  </div>
+</div>
