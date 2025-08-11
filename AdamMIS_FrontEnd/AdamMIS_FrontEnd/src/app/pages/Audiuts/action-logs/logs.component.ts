@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
-import { LogService, ActivityLog, RequestFilters, LogResponse } from '../../services/log.service';
+import { LogService, ActivityLog, RequestFilters, LogResponse } from '../../../services/log.service';
 
 @Component({
   selector: 'app-logs',

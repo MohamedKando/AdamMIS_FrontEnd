@@ -92,6 +92,23 @@ export class LayoutComponent implements OnInit, OnDestroy {
           permission: 'View Admin Manager' 
         }
       ]
+    },
+    { 
+      label: 'Audits Logs', 
+      icon: 'audit', 
+      route: '/audits',
+      hasSubmenu: true,
+      submenuItems: [
+        { 
+          label: 'Action Logs', 
+          route: '/audits/action-logs', 
+          //permission: 'View Report Manager'
+        },
+       // { 
+         // label: 'Report Viewing', 
+          //route: '/dms-report/viewing' 
+      //  }
+      ]
     }
   ];
   
@@ -268,7 +285,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
     const icons: { [key: string]: string } = {
       'dashboard': '📊',
       'report': '📋',
-      'admin-management': '👥'
+      'admin-management': '👥',
+      'audit': '👁️'
     };
     return icons[iconType] || '📄';
   }
@@ -281,28 +299,54 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   // Handle logout confirmation
-  onLogoutConfirmed(): void {
-    try {
-      // Reset the modal visibility first
-      this.showLogoutConfirmation = false;
-      
-      // Perform logout immediately
-      this.authService.logout();
-      
-      // Show success toast
-      this.notificationService.showSuccess('Successfully logged out. See you soon!', 2000);
-      
-      // Navigate to login page immediately - no delay needed
-      this.router.navigate(['/login']);
-      
-    } catch (error) {
-      // Reset modal visibility on error too
-      this.showLogoutConfirmation = false;
-      // Show error toast if logout fails
-      this.notificationService.showError('An error occurred during logout. Please try again.', 5000);
-      console.error('Logout error:', error);
-    }
+// Handle logout confirmation - Updated to work with the new AuthService
+onLogoutConfirmed(): void {
+  try {
+    // Reset the modal visibility first
+    this.showLogoutConfirmation = false;
+    
+    // Call the auth service logout which now handles logging
+    this.authService.logout().subscribe({
+      next: (response) => {
+        // Clear auth data after successful logout tracking
+        this.authService.clearAuthData();
+        
+        // Show success toast
+        this.notificationService.showSuccess('Successfully logged out. See you soon!', 2000);
+        
+        // Navigate to login page
+        this.router.navigate(['/login']);
+      },
+      error: (error: any) => {
+        // Even if logging fails, still logout the user
+        console.warn('Logout logging failed, but proceeding with logout:', error);
+        
+        // Clear auth data anyway
+        this.authService.clearAuthData();
+        
+        // Show success toast (since logout still happened)
+        this.notificationService.showSuccess('Successfully logged out. See you soon!', 2000);
+        
+        // Navigate to login page
+        this.router.navigate(['/login']);
+      }
+    });
+    
+  } catch (error) {
+    // Reset modal visibility on error too
+    this.showLogoutConfirmation = false;
+    
+    // Fallback - clear auth data anyway
+    this.authService.clearAuthData();
+    
+    // Show error toast
+    this.notificationService.showError('An error occurred during logout. Please try again.', 5000);
+    console.error('Logout error:', error);
+    
+    // Still navigate to login as a fallback
+    this.router.navigate(['/login']);
   }
+}
 
   // Handle logout cancellation
   onLogoutCancelled(): void {

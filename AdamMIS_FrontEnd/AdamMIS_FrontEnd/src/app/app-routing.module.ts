@@ -11,9 +11,10 @@ import { AdminManagementComponent } from './pages/admin-management/admin-managem
 import {UserManagementComponent} from './pages/admin-management/user-management/user-management.component';
 import {RoleManagementComponent} from './pages/admin-management/role-management/role-management.component';
 import { UserProfileComponent } from './pages/user-profile/user-profile.component';
-import { LogsComponent } from './pages/logs/logs.component';
+import { LogsComponent } from './pages/Audiuts/action-logs/logs.component';
 import { AuthGuard } from './guards/auth.guard';
 import { PermissionGuard } from './guards/permission.guard';
+import { AuditsComponent } from './pages/Audiuts/audits.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -91,8 +92,27 @@ const routes: Routes = [
         pathMatch: 'full'
       },
       {
-        path: 'logs',
-        component: LogsComponent
+        path: 'action-logs',
+        component: LogsComponent,
+        
+      },
+      {
+        path: 'audits',
+        component: AuditsComponent,
+        children: [
+          {
+            path: 'action-logs',
+            component: LogsComponent,
+            //canActivate: [AuthGuard, PermissionGuard],
+            //data: { permission: 'View Report Manager' } 
+          },
+
+          {
+            path: '',
+            redirectTo: 'action-logs',
+            pathMatch: 'full'
+          }
+        ]
       }
     ]
   },

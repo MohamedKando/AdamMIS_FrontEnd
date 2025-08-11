@@ -15,7 +15,8 @@ export class NavigationComponent {
   menuItems = [
     { label: 'Dashboard', icon: 'dashboard', route: '/dashboard' },
     { label: 'DMS Report', icon: 'report', route: '/dms-report' },
-    { label: 'Admin Management', icon: 'admin', route: '/admin-management' }
+    { label: 'Admin Management', icon: 'admin', route: '/admin-management' },
+    { label: 'Audits Logs ', icon: 'audit', route: '/Audits'}
     // Add more menu items as needed
   ];
 

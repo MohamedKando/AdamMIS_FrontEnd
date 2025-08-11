@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
 
+import { Observable } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 @Injectable({
   providedIn: 'root'
 })
@@ -182,9 +182,24 @@ hasPermission(permission: string): boolean {
 isSuperAdmin(): boolean {
   return this.hasRole('SuperAdmin');
 }
-  logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('UserName');
-    localStorage.removeItem('id');
-  }
+// In your AuthService, replace the current logout method
+logout(): Observable<any> {
+  const token = this.getToken();
+  
+
+  const headers = new HttpHeaders({
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  });
+
+  // Call the logout endpoint to track the logout
+  return this.http.post(`${this.apiUrl}/Auth/logout`, {}, { headers });
+}
+
+// Add this new method to clear auth data
+clearAuthData(): void {
+  localStorage.removeItem('token');
+  localStorage.removeItem('UserName');
+  localStorage.removeItem('id');
+}
 }

@@ -27,7 +27,9 @@ import { ToastComponent } from './Notfications/toast.component';
 import { ConfirmationModalComponent } from './Notfications/confirmation-modal.component';
 import { NotificationService } from './Notfications/notification.service';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { LogsComponent } from './pages/logs/logs.component';
+import { LogsComponent } from './pages/Audiuts/action-logs/logs.component';
+import { AuditsComponent } from './pages/Audiuts/audits.component';
+import { JsonDisplayComponent } from './Helpers/json-display/json-display.component';
 
 @NgModule({
   declarations: [
@@ -46,7 +48,9 @@ import { LogsComponent } from './pages/logs/logs.component';
     ReportManagementComponent,
     ToastComponent,
     ConfirmationModalComponent,
-    LogsComponent
+    LogsComponent,
+    JsonDisplayComponent,
+    AuditsComponent
   ],
   imports: [
     BrowserModule,
