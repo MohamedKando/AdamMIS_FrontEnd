@@ -45,6 +45,7 @@ export interface ActivityStats {
 export class LogService {
   // Update this URL to match your API endpoint
   private readonly baseUrl = 'http://192.168.1.203:8080/api/Logs';
+  private readonly LocalbaseUrl = 'http://192.168.1.203:8080/api/Logs';
 
   constructor(private http: HttpClient) {}
 
