@@ -87,8 +87,8 @@ export interface DepartmentResponse {
   providedIn: 'root'
 })
 export class UserService {
-  private baseUrl = 'https://localhost:7209/api/User';
-  private baseRoleUrl = 'https://localhost:7209/api';
+  private baseUrl = 'http://192.168.1.203:8080/api/User';
+  private baseRoleUrl = 'http://192.168.1.203:8080/api';
 
   constructor(private http: HttpClient) {}
 
@@ -171,7 +171,7 @@ uploadUserPhoto(userId: string, photo: File): Observable<string> {
     }
     // Remove leading slash if present and construct full URL
     const cleanPath = photoPath.startsWith('/') ? photoPath.substring(1) : photoPath;
-    return `https://localhost:7209/${cleanPath}`;
+    return `http://192.168.1.203:8080/${cleanPath}`;
   }
   
 }

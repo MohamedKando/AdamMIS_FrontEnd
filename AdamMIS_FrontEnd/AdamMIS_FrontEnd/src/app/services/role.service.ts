@@ -35,7 +35,7 @@ export interface ApiResult<T> {
   providedIn: 'root'
 })
 export class RoleService {
-  private readonly baseUrl = 'https://localhost:7209/api'; // Update this to your actual API URL
+  private readonly baseUrl = 'http://192.168.1.203:8080/api'; // Update this to your actual API URL
 
   constructor(private http: HttpClient) {}
 

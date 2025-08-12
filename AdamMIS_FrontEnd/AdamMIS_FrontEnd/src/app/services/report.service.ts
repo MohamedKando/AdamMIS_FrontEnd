@@ -81,7 +81,7 @@ export interface GenerateReportResponse {
   providedIn: 'root'
 })
 export class ReportService {
-  private apiUrl = 'https://localhost:7209/api/Reports';
+  private apiUrl = 'http://192.168.1.203:8080/api/Reports';
   
   constructor(private http: HttpClient) {}
 
@@ -459,7 +459,7 @@ export class ReportService {
    */
   getAllUsers(): Observable<User[]> {
     // Update this URL to match your actual user API endpoint
-    return this.http.get<User[]>('https://localhost:7209/api/User').pipe(
+    return this.http.get<User[]>('http://192.168.1.203:8080/api/User').pipe(
       catchError(this.handleError)
     );
   }
