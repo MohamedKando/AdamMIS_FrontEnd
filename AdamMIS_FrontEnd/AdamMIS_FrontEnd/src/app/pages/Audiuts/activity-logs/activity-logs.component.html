@@ -1,0 +1,172 @@
+<div class="activity-logs-container">
+  <!-- Header -->
+  <div class="header">
+    <div class="title-section">
+      <h2 class="page-title">
+        <i class="icon-activity"></i>
+        User Activity Monitor
+      </h2>
+      <p class="page-description">Real-time monitoring of online and offline users</p>
+    </div>
+    
+    <button class="refresh-btn" (click)="refreshData()" [disabled]="loading">
+      <i class="icon-refresh" [class.spinning]="loading"></i>
+      Refresh
+    </button>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-container">
+    <div class="stat-card total" (click)="showAll()">
+      <div class="stat-icon">
+        <i class="icon-users"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-number">{{ totalUsers }}</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+    </div>
+
+    <div class="stat-card online" (click)="setOnlineFilter()">
+      <div class="stat-icon">
+        <i class="icon-online"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-number">{{ onlineCount }}</div>
+        <div class="stat-label">Online</div>
+      </div>
+    </div>
+
+    <div class="stat-card offline" (click)="setOfflineFilter()">
+      <div class="stat-icon">
+        <i class="icon-offline"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-number">{{ offlineCount }}</div>
+        <div class="stat-label">Offline</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-container">
+    <div class="search-box">
+      <i class="icon-search"></i>
+      <input 
+        type="text" 
+        placeholder="Search by username, user ID, or IP address..." 
+        [(ngModel)]="searchTerm"
+        class="search-input">
+    </div>
+
+    <div class="filter-buttons">
+      <button 
+        class="filter-btn" 
+        [class.active]="!showOnlineOnly && !showOfflineOnly"
+        (click)="showAll()">
+        All Users
+      </button>
+      <button 
+        class="filter-btn online" 
+        [class.active]="showOnlineOnly"
+        (click)="setOnlineFilter()">
+        Online Only
+      </button>
+      <button 
+        class="filter-btn offline" 
+        [class.active]="showOfflineOnly"
+        (click)="setOfflineFilter()">
+        Offline Only
+      </button>
+    </div>
+
+    <button class="clear-filters-btn" (click)="clearFilters()" *ngIf="searchTerm || showOnlineOnly || showOfflineOnly">
+      Clear Filters
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading user activity data...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="error && !loading">
+    <div class="error-icon">⚠️</div>
+    <h3>Unable to Load Data</h3>
+    <p>{{ error }}</p>
+    <button class="retry-btn" (click)="refreshData()">Try Again</button>
+  </div>
+
+  <!-- Users List -->
+  <div class="users-container" *ngIf="!loading && !error">
+    <div class="users-header">
+      <h3>
+        Users Activity 
+        <span class="count">({{ filteredUsers.length }})</span>
+      </h3>
+      <div class="auto-refresh-indicator">
+        <i class="icon-clock"></i>
+        Auto-refreshes every 30 seconds
+      </div>
+    </div>
+
+    <div class="users-grid" *ngIf="filteredUsers.length > 0">
+      <div 
+        class="user-card" 
+        *ngFor="let user of filteredUsers" 
+        [class.online]="user.isOnline"
+        [class.offline]="!user.isOnline">
+        
+        <div class="user-header">
+          <div class="user-info">
+            <div class="user-avatar">
+              <span>{{ user.userName.charAt(0).toUpperCase() }}</span>
+            </div>
+            <div class="user-details">
+              <h4 class="user-name">{{ user.userName }}</h4>
+              <p class="user-id">ID: {{ user.userId }}</p>
+            </div>
+          </div>
+          <div class="status-indicator" [class.online]="user.isOnline" [class.offline]="!user.isOnline">
+            <span class="status-dot"></span>
+            <span class="status-text">{{ user.isOnline ? 'Online' : 'Offline' }}</span>
+          </div>
+        </div>
+
+        <div class="user-stats">
+          <div class="stat-row">
+            <span class="label">Last Activity:</span>
+            <span class="value">{{ formatLastActivity(user.lastActivityTime) }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="label">Login Time:</span>
+            <span class="value">{{ user.loginTime | date:'MMM d, y, h:mm a' }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="label">Session Duration:</span>
+            <span class="value">{{ formatDuration(user.sessionTime) }}</span>
+          </div>
+          <div class="stat-row" *ngIf="user.ipAddress">
+            <span class="label">IP Address:</span>
+            <span class="value ip">{{ user.ipAddress }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="filteredUsers.length === 0">
+      <div class="empty-icon">👥</div>
+      <h3>No Users Found</h3>
+      <p *ngIf="searchTerm">No users match your search criteria. Try adjusting your filters.</p>
+      <p *ngIf="!searchTerm && (showOnlineOnly || showOfflineOnly)">
+        No {{ showOnlineOnly ? 'online' : 'offline' }} users found.
+      </p>
+      <p *ngIf="!searchTerm && !showOnlineOnly && !showOfflineOnly">
+        No user activity data available at the moment.
+      </p>
+    </div>
+  </div>
+</div>

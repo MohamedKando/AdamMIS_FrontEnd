@@ -104,10 +104,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
           route: '/audits/action-logs', 
           //permission: 'View Report Manager'
         },
-       // { 
-         // label: 'Report Viewing', 
-          //route: '/dms-report/viewing' 
-      //  }
+        { 
+          label: 'Activity Logs', 
+          route: '/audits/activity-logs' 
+        }
       ]
     }
   ];

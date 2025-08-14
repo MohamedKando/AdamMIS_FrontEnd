@@ -3,6 +3,16 @@ import { HttpClient, HttpParams, HttpHeaders, HttpErrorResponse } from '@angular
 import { Observable, of, throwError } from 'rxjs';
 import { map, catchError, retry } from 'rxjs/operators';
 
+export interface ActivityLogs {
+  id: number;
+  userId: string;
+  userName: string;
+  lastActivityTime: string;
+  loginTime: string;
+  sessionTime: string; // Fixed: should be string, not SessionTime
+  isOnline: boolean;
+  ipAddress?: string;
+}
 export interface ActivityLog {
   id: number;
   username: string;
@@ -14,6 +24,7 @@ export interface ActivityLog {
   newValues: string | null;
   timestamp: string;
   ipAddress: string;
+  
 }
 
 export interface RequestFilters {
@@ -44,7 +55,7 @@ export interface ActivityStats {
 })
 export class LogService {
   // Update this URL to match your API endpoint
-  private readonly baseUrl = 'http://192.168.1.203:8080/api/Logs';
+  private readonly baseUrl = 'https://localhost:7209/api/Logs';
   private readonly LocalbaseUrl = 'http://192.168.1.203:8080/api/Logs';
 
   constructor(private http: HttpClient) {}
@@ -77,7 +88,13 @@ export class LogService {
         }))
       );
   }
-
+getActivityLogs(): Observable<ActivityLogs[]> {
+  return this.http.get<ActivityLogs[]>(`${this.baseUrl}/activity-logs`)
+    .pipe(
+      map(response => Array.isArray(response) ? response : []),
+      catchError(this.handleError<ActivityLogs[]>('getActivityLogs', []))
+    );
+}
   getUsers(): Observable<string[]> {
     return this.http.get<{ users: string[] } | string[]>(`${this.baseUrl}/users`)
       .pipe(

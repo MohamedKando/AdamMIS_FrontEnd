@@ -30,6 +30,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { LogsComponent } from './pages/Audiuts/action-logs/logs.component';
 import { AuditsComponent } from './pages/Audiuts/audits.component';
 import { JsonDisplayComponent } from './Helpers/json-display/json-display.component';
+import { ActivityLogsComponent } from './pages/Audiuts/activity-logs/activity-logs.component';
 
 @NgModule({
   declarations: [
@@ -50,7 +51,8 @@ import { JsonDisplayComponent } from './Helpers/json-display/json-display.compon
     ConfirmationModalComponent,
     LogsComponent,
     JsonDisplayComponent,
-    AuditsComponent
+    AuditsComponent,
+    ActivityLogsComponent
   ],
   imports: [
     BrowserModule,

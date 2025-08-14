@@ -6,7 +6,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://192.168.1.203:8080';
+  private LocalapiUrl = 'http://192.168.1.203:8080';
+  private apiUrl = 'https://localhost:7209';
 
   constructor(private http: HttpClient) { }
 
@@ -201,5 +202,16 @@ clearAuthData(): void {
   localStorage.removeItem('token');
   localStorage.removeItem('UserName');
   localStorage.removeItem('id');
+}
+
+heartbeat(): Observable<any> {
+  const token = this.getToken();
+
+  const headers = new HttpHeaders({
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  });
+
+  return this.http.post(`${this.apiUrl}/Auth/heartbeat`, {}, { headers });
 }
 }

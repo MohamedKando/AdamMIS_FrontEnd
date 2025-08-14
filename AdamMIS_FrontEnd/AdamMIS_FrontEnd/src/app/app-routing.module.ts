@@ -15,6 +15,7 @@ import { LogsComponent } from './pages/Audiuts/action-logs/logs.component';
 import { AuthGuard } from './guards/auth.guard';
 import { PermissionGuard } from './guards/permission.guard';
 import { AuditsComponent } from './pages/Audiuts/audits.component';
+import { ActivityLogsComponent } from './pages/Audiuts/activity-logs/activity-logs.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -107,9 +108,16 @@ const routes: Routes = [
             //data: { permission: 'View Report Manager' } 
           },
 
+         {
+            path: 'activity-logs',
+            component: ActivityLogsComponent,
+            //canActivate: [AuthGuard, PermissionGuard],
+            //data: { permission: 'View Report Manager' } 
+          },
+
           {
             path: '',
-            redirectTo: 'action-logs',
+            redirectTo: 'activity-logs',
             pathMatch: 'full'
           }
         ]
