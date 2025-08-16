@@ -17,7 +17,7 @@ interface MenuItem {
   route: string;
   hasSubmenu?: boolean;
   submenuItems?: SubmenuItem[];
-  permission?: string;
+  permission?: string[];
 }
 
 @Component({
@@ -79,7 +79,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
       icon: 'admin-management', 
       route: '/admin-management',
       hasSubmenu: true,
-      permission: 'View Admin Manager',
+      permission: ['View Admin Manager'],
       submenuItems: [
         { 
           label: 'User Management', 
@@ -98,15 +98,18 @@ export class LayoutComponent implements OnInit, OnDestroy {
       icon: 'audit', 
       route: '/audits',
       hasSubmenu: true,
+      permission: ['View System Logs',"View Activity Logs"],
+      
       submenuItems: [
         { 
           label: 'Action Logs', 
           route: '/audits/action-logs', 
-          //permission: 'View Report Manager'
+          permission: 'View System Logs'
         },
         { 
           label: 'Activity Logs', 
-          route: '/audits/activity-logs' 
+          route: '/audits/activity-logs',
+          permission: 'View Activity Logs'
         }
       ]
     }
@@ -171,9 +174,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
     return this.authService.isSuperAdmin();
   }
 
-  hasPermission(permission: string): boolean {
-    return this.authService.hasPermission(permission);
-  }
+hasPermission(permission: string | string[]): boolean {
+  return this.authService.hasPermission(permission);
+}
 
   // User information loading
   loadUserInfo(): void {

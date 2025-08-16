@@ -6,8 +6,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
   providedIn: 'root'
 })
 export class AuthService {
-  private LocalapiUrl = 'http://192.168.1.203:8080';
-  private apiUrl = 'https://localhost:7209';
+  private apiUrl = 'http://192.168.1.203:8080';
+  private LocalapiUrl = 'https://localhost:7209';
 
   constructor(private http: HttpClient) { }
 
@@ -172,8 +172,15 @@ hasAnyRole(roles: string[]): boolean {
 /**
  * Check if user has specific permission
  */
-hasPermission(permission: string): boolean {
+hasPermission(permission: string | string[]): boolean {
   const userPermissions = this.getUserPermissions();
+
+  if (Array.isArray(permission)) {
+    // ✅ Parent: return true if user has ANY of the required permissions
+    return permission.some(p => userPermissions.includes(p));
+  }
+
+  // ✅ Submenu: single permission
   return userPermissions.includes(permission);
 }
 
