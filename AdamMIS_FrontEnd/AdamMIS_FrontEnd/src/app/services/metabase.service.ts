@@ -58,8 +58,8 @@ export interface ApiResponse<T> {
   providedIn: 'root'
 })
 export class MetabaseService {
-  private apiUrl = 'https://localhost:7209/api/Metabase';
   private LocalapiUrl = 'https://localhost:7209/api/Metabase';
+  private apiUrl = 'http://192.168.1.203:8080/api/Metabase';
 
   constructor(private http: HttpClient) {}
 
