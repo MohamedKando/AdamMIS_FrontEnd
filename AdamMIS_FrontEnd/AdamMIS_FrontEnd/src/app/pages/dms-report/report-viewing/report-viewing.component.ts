@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router'; // Add this import
 import { ReportService, UserReportResponse, UploadProgress, RCategoryResponse } from '../../../services/report.service';
+import { MetabaseService, UserMetabaseResponse } from '../../../services/metabase.service';
 import { AuthService } from '../../../services/auth.service';
 
 // Add this interface if it's not imported from the service
@@ -23,6 +25,8 @@ export class ReportViewingComponent implements OnInit {
   // Data properties
   reports: ExtendedUserReportResponse[] = [];
   filteredReports: ExtendedUserReportResponse[] = [];
+  urls: UserMetabaseResponse[] = [];
+  filteredUrls: UserMetabaseResponse[] = [];
   categories: RCategoryResponse[] = [];
   pinnedReportIds: Set<number> = new Set(); // Store pinned report IDs
   
@@ -33,7 +37,8 @@ export class ReportViewingComponent implements OnInit {
   
   // UI properties
   searchTerm: string = '';
-  currentView: 'table' | 'grid' = 'table';
+  currentView: 'reports' | 'urls' = 'reports'; // Changed from 'table' | 'grid'
+  displayMode: 'table' | 'grid' = 'table'; // New property for reports display mode
   activeFilter: string = 'all';
   showUploadSection: boolean = false;
   
@@ -43,15 +48,26 @@ export class ReportViewingComponent implements OnInit {
   generationStatus: string = '';
   generationMessage: string = '';
 
-  constructor(
-    private reportService: ReportService,
-    private authService: AuthService
-  ) {}
+constructor(
+  private reportService: ReportService,
+  private metabaseService: MetabaseService,
+  private authService: AuthService,
+  private route: ActivatedRoute // Add this line
+) {}
 
   ngOnInit(): void {
     this.getCurrentUser();
     this.loadCategories();
     this.loadPinnedReports();
+this.route.queryParams.subscribe(params => {
+    if (params['tab'] === 'metabase') {
+      this.currentView = 'urls'; // Switch to Metabase view
+    } else if (params['tab'] === 'cr-reports') {
+      this.currentView = 'reports'; // Switch to CR Reports view
+    }
+    // Load data based on current view
+    this.loadData();
+  });
   }
 
   getCurrentUser(): void {
@@ -59,7 +75,7 @@ export class ReportViewingComponent implements OnInit {
     this.currentUserId = this.authService.getUserId();
     
     if (this.currentUserId) {
-      this.loadReports();
+      this.loadData();
     } else {
       this.error = 'User not authenticated';
     }
@@ -92,6 +108,15 @@ export class ReportViewingComponent implements OnInit {
     );
   }
 
+  // New unified data loading method
+  loadData(): void {
+    if (this.currentView === 'reports') {
+      this.loadReports();
+    } else {
+      this.loadUrls();
+    }
+  }
+
   loadReports(): void {
     if (!this.currentUserId) {
       this.error = 'User ID not found';
@@ -108,7 +133,7 @@ export class ReportViewingComponent implements OnInit {
           ...report,
           isPinned: this.pinnedReportIds.has(report.reportId)
         }));
-        this.filteredReports = [...this.reports]; // Initialize filtered reports
+        this.applyFilters();
         this.loading = false;
         console.log('Reports loaded:', this.reports);
       },
@@ -120,7 +145,34 @@ export class ReportViewingComponent implements OnInit {
     });
   }
 
-  // Pin functionality
+  // New method to load URLs
+  loadUrls(): void {
+  if (!this.currentUserId) {
+    this.error = 'User ID not found';
+    return;
+  }
+
+  this.loading = true;
+  this.error = '';
+
+  // Use getAllAssignments and filter by current user
+  this.metabaseService.getAllAssignments().subscribe({
+    next: (data: UserMetabaseResponse[]) => {
+      // Filter assignments for the current user
+      this.urls = data.filter(assignment => assignment.userId === this.currentUserId);
+      this.applyFilters();
+      this.loading = false;
+      console.log('URLs loaded:', this.urls);
+    },
+    error: (error: any) => {
+      this.error = 'Failed to load URLs';
+      this.loading = false;
+      console.error('Error loading URLs:', error);
+    }
+  });
+}
+
+  // Pin functionality (only for reports)
   onTogglePin(reportId: number): void {
     const report = this.reports.find(r => r.reportId === reportId);
     if (!report) return;
@@ -146,9 +198,6 @@ export class ReportViewingComponent implements OnInit {
     // Show feedback
     const action = report.isPinned ? 'pinned' : 'unpinned';
     console.log(`Report ${report.reportFileName} has been ${action}`);
-    
-    // Optional: Show a toast notification
-    // this.showToast(`Report ${action} successfully`);
   }
 
   // Search and filter methods
@@ -156,12 +205,20 @@ export class ReportViewingComponent implements OnInit {
     this.applyFilters();
   }
 
-  filterReports(filter: string): void {
+  filterItems(filter: string): void {
     this.activeFilter = filter;
     this.applyFilters();
   }
 
   private applyFilters(): void {
+    if (this.currentView === 'reports') {
+      this.applyReportsFilters();
+    } else {
+      this.applyUrlsFilters();
+    }
+  }
+
+  private applyReportsFilters(): void {
     let filtered = [...this.reports];
 
     // Apply search filter
@@ -188,12 +245,75 @@ export class ReportViewingComponent implements OnInit {
     this.filteredReports = filtered;
   }
 
-  // View toggle
-  toggleView(view: 'table' | 'grid'): void {
-    this.currentView = view;
+  private applyUrlsFilters(): void {
+    let filtered = [...this.urls];
+
+    // Apply search filter
+    if (this.searchTerm.trim()) {
+      const search = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(url => 
+        url.metabaseTitle.toLowerCase().includes(search) ||
+        url.metabaseUrl.toLowerCase().includes(search) ||
+        url.assignedBy.toLowerCase().includes(search)
+      );
+    }
+
+    // Apply category filter (if URLs have categories)
+    if (this.activeFilter !== 'all') {
+      // You can implement URL category filtering here if needed
+      // For now, we'll just keep all filtered URLs
+    }
+
+    this.filteredUrls = filtered;
+  }
+
+  // View toggle methods
+  toggleView(view: 'reports' | 'urls'): void {
+    if (this.currentView !== view) {
+      this.currentView = view;
+      this.activeFilter = 'all'; // Reset filter when switching views
+      this.searchTerm = ''; // Reset search when switching views
+      this.loadData(); // Load appropriate data
+    }
+  }
+
+  // Display mode toggle (only for reports)
+  toggleDisplayMode(mode: 'table' | 'grid'): void {
+    this.displayMode = mode;
+  }
+
+  // Helper methods for search placeholder
+  getSearchPlaceholder(): string {
+    if (this.currentView === 'reports') {
+      return 'Search reports by name, category, or assigned by...';
+    } else {
+      return 'Search URLs by title, URL, or assigned by...';
+    }
   }
 
   // Statistics methods
+  getCurrentViewTotal(): number {
+    return this.currentView === 'reports' ? this.reports.length : this.urls.length;
+  }
+
+  getCurrentViewCategories(): number {
+    if (this.currentView === 'reports') {
+      return this.getUniqueCategories();
+    } else {
+      // For URLs, you might want to implement URL categories
+      return 1; // Placeholder
+    }
+  }
+
+  getCurrentCategories(): string[] {
+    if (this.currentView === 'reports') {
+      return this.getUniqueCategory();
+    } else {
+      // Return URL categories if available
+      return []; // Placeholder
+    }
+  }
+
   getTotalReports(): number {
     return this.reports.length;
   }
@@ -222,7 +342,11 @@ export class ReportViewingComponent implements OnInit {
     }).length;
   }
 
-  // Report generation methods
+  getAssignedUrls(): number {
+    return this.urls.length;
+  }
+
+  // Report generation methods (unchanged)
   onViewReport(reportId: number): void {
     console.log('Starting report generation for ID:', reportId);
     
@@ -243,8 +367,6 @@ export class ReportViewingComponent implements OnInit {
         this.generationStatus = 'completed';
         this.generationMessage = response.message;
         
-        //alert(`Report generated successfully: ${response.fileName}\nGenerated at: ${new Date(response.generatedAt).toLocaleString()}`);
-        
         setTimeout(() => {
           this.generationStatus = '';
           this.generationMessage = '';
@@ -253,12 +375,6 @@ export class ReportViewingComponent implements OnInit {
       },
       error: (error) => {
         console.error('❌ Report generation failed:', error);
-        console.error('Error details:', {
-          message: error.message,
-          status: error.status,
-          statusText: error.statusText,
-          error: error.error
-        });
         
         // Update UI
         this.generatingReportId = null;
@@ -272,7 +388,61 @@ export class ReportViewingComponent implements OnInit {
     });
   }
 
-  // Method for file upload and report generation
+  // URL handling methods
+  onViewUrl(url: string): void {
+    window.open(url, '_blank');
+  }
+
+  onCopyUrl(url: string): void {
+    navigator.clipboard.writeText(url).then(() => {
+      console.log('URL copied to clipboard');
+      // You can show a toast notification here
+      this.showToast('URL copied to clipboard!', 'info');
+    }).catch(err => {
+      console.error('Failed to copy URL:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        this.showToast('URL copied to clipboard!', 'info');
+      } catch (err) {
+        console.error('Fallback: Failed to copy URL:', err);
+      }
+      document.body.removeChild(textArea);
+    });
+  }
+
+  // Toast notification method
+  showToast(message: string, type: string = 'info'): void {
+    // Simple toast implementation - you can enhance this
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    
+    let container = document.querySelector('.toast-container') as HTMLElement;
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+      if (container && container.contains(toast)) {
+        container.removeChild(toast);
+        if (container.children.length === 0 && container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
+      }
+    }, 3000);
+  }
+
+  // File upload and report generation methods (unchanged)
   onUploadAndGenerateReport(): void {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -291,7 +461,6 @@ export class ReportViewingComponent implements OnInit {
     document.body.removeChild(fileInput);
   }
 
-  // Method to handle report generation with progress tracking
   generateReport(file: File, reportId?: number): void {
     this.generatingReportId = reportId || null;
     this.generationProgress = 0;
@@ -308,8 +477,6 @@ export class ReportViewingComponent implements OnInit {
         if (progress.status === 'completed') {
           console.log('Report generated successfully!', progress.data);
           this.generatingReportId = null;
-          // Optionally refresh the reports list
-          // this.loadReports();
         }
       },
       error: (error: any) => {
@@ -323,7 +490,6 @@ export class ReportViewingComponent implements OnInit {
     });
   }
 
-  // Simple version without progress tracking
   generateReportSimple(file: File): void {
     this.loading = true;
     this.error = '';
@@ -332,7 +498,6 @@ export class ReportViewingComponent implements OnInit {
       next: (response) => {
         console.log('Report generated successfully!', response);
         this.loading = false;
-        // Show success message or refresh reports
       },
       error: (error: any) => {
         this.error = `Failed to generate report: ${error.message}`;
@@ -342,7 +507,6 @@ export class ReportViewingComponent implements OnInit {
     });
   }
 
-  // Method to handle file selection from HTML template
   onFileSelected(event: any): void {
     const file: File = event.target.files[0];
     if (file) {
@@ -350,11 +514,20 @@ export class ReportViewingComponent implements OnInit {
     }
   }
 
-  // Utility methods
+  // Refresh methods
   refreshReports(): void {
-    this.loadReports();
+    if (this.currentView === 'reports') {
+      this.loadReports();
+    }
   }
 
+  refreshUrls(): void {
+    if (this.currentView === 'urls') {
+      this.loadUrls();
+    }
+  }
+
+  // Utility methods
   getCategoryClass(category: string): string {
     return `category-${category.toLowerCase().replace(/\s+/g, '-')}`;
   }
@@ -369,6 +542,10 @@ export class ReportViewingComponent implements OnInit {
 
   trackByReportId(index: number, report: ExtendedUserReportResponse): number {
     return report.reportId;
+  }
+
+  trackByUrlId(index: number, url: UserMetabaseResponse): number {
+    return url.id;
   }
 
   formatDate(date: string | Date): string {

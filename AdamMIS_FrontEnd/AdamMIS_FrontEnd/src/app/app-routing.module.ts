@@ -16,6 +16,7 @@ import { AuthGuard } from './guards/auth.guard';
 import { PermissionGuard } from './guards/permission.guard';
 import { AuditsComponent } from './pages/Audiuts/audits.component';
 import { ActivityLogsComponent } from './pages/Audiuts/activity-logs/activity-logs.component';
+import { MetabaseComponent } from './pages/dms-report/metabase/metabase.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -38,6 +39,12 @@ const routes: Routes = [
             path: 'management',
             component: ReportManagementComponent,
             canActivate: [AuthGuard, PermissionGuard],
+            data: { permission: 'View Report Manager' } 
+          },
+                    {
+            path: 'metabase',
+           component: MetabaseComponent,
+            canActivate: [AuthGuard,PermissionGuard],
             data: { permission: 'View Report Manager' } 
           },
           {
@@ -104,15 +111,15 @@ const routes: Routes = [
           {
             path: 'action-logs',
             component: LogsComponent,
-            //canActivate: [AuthGuard, PermissionGuard],
-            //data: { permission: 'View Report Manager' } 
+            canActivate: [AuthGuard, PermissionGuard],
+            data: { permission: 'View System Logs' } 
           },
 
          {
             path: 'activity-logs',
             component: ActivityLogsComponent,
-            //canActivate: [AuthGuard, PermissionGuard],
-            //data: { permission: 'View Report Manager' } 
+            canActivate: [AuthGuard, PermissionGuard],
+            data: { permission: 'View Activity Logs' } 
           },
 
           {

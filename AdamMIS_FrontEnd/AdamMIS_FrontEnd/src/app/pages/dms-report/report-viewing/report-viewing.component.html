@@ -2,24 +2,23 @@
 <div class="main-content">
   <!-- Top Navigation -->
 
-
   <!-- Dashboard Container -->
   <div class="dashboard-container">
     <!-- Page Header -->
     <div class="page-header">
-      <h1 class="page-title">Report Dashboard</h1>
+      <h1 class="page-title">Dashboard</h1>
     </div>
 
     <!-- Loading State -->
     <div *ngIf="loading" class="loading-container">
       <div class="loading-spinner"></div>
-      <p>Loading reports...</p>
+      <p>Loading data...</p>
     </div>
 
     <!-- Error State -->
     <div *ngIf="error && !loading" class="error-container">
       <div class="error-message">{{ error }}</div>
-      <button class="retry-btn" (click)="loadReports()">Retry</button>
+      <button class="retry-btn" (click)="loadData()">Retry</button>
     </div>
 
     <!-- Main Content (shown when not loading) -->
@@ -27,21 +26,25 @@
       <!-- Statistics Cards -->
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-number">{{ getTotalReports() }}</div>
-          <div class="stat-label">Total Reports</div>
+          <div class="stat-number">{{ getCurrentViewTotal() }}</div>
+          <div class="stat-label">Total {{ currentView === 'reports' ? 'Reports' : 'URLs' }}</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" *ngIf="currentView === 'reports'">
           <div class="stat-number">{{ getPinnedReports() }}</div>
           <div class="stat-label">Pinned Reports</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-number">{{ getUniqueCategories() }}</div>
+        <div class="stat-card"*ngIf="currentView === 'reports'">
+          <div class="stat-number">{{ getCurrentViewCategories() }}</div>
           <div class="stat-label">Categories</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" *ngIf="currentView === 'reports'">
           <div class="stat-number">{{ getThisWeekReports() }}</div>
           <div class="stat-label">This Week</div>
         </div>
+        <!--<div class="stat-card" *ngIf="currentView === 'urls'">
+          <div class="stat-number">{{ getAssignedUrls() }}</div>
+          <div class="stat-label">Assigned URLs</div>
+        </div>-->
       </div>
 
       <!-- Controls Section -->
@@ -51,7 +54,7 @@
             <input 
               type="text" 
               class="search-input" 
-              placeholder="Search reports by name, category, or assigned by..." 
+              [placeholder]="getSearchPlaceholder()"
               [(ngModel)]="searchTerm"
               (input)="onSearch()"
             >
@@ -60,17 +63,17 @@
           <div class="view-toggle">
             <button 
               class="toggle-btn" 
-              [class.active]="currentView === 'table'"
-              (click)="toggleView('table')"
+              [class.active]="currentView === 'reports'"
+              (click)="toggleView('reports')"
             >
-              Table View
+              📄 Crystal Reports
             </button>
             <button 
               class="toggle-btn" 
-              [class.active]="currentView === 'grid'"
-              (click)="toggleView('grid')"
+              [class.active]="currentView === 'urls'"
+              (click)="toggleView('urls')"
             >
-              Grid View
+              🔗 MB Reports
             </button>
           </div>
         </div>
@@ -79,30 +82,49 @@
           <button 
             class="filter-tab" 
             [class.active]="activeFilter === 'all'"
-            (click)="filterReports('all')"
+            (click)="filterItems('all')"
           >
             All
           </button>
           <button 
-            *ngFor="let category of getUniqueCategory()" 
+            *ngFor="let category of getCurrentCategories()" 
             class="filter-tab" 
             [class.active]="activeFilter === category.toLowerCase()"
-            (click)="filterReports(category.toLowerCase())"
+            (click)="filterItems(category.toLowerCase())"
           >
             {{ category }}
           </button>
           <button 
+            *ngIf="currentView === 'reports'"
             class="filter-tab" 
             [class.active]="activeFilter === 'pinned'"
-            (click)="filterReports('pinned')"
+            (click)="filterItems('pinned')"
           >
             Pinned Only
           </button>
         </div>
+
+        <!-- Display Mode Toggle (only for reports) -->
+       <!-- <div class="display-mode-toggle" *ngIf="currentView === 'reports'">
+          <button 
+            class="mode-btn" 
+            [class.active]="displayMode === 'table'"
+            (click)="toggleDisplayMode('table')"
+          >
+            📋 Table
+          </button>
+          <button 
+            class="mode-btn" 
+            [class.active]="displayMode === 'grid'"
+            (click)="toggleDisplayMode('grid')"
+          >
+            📱 Grid
+          </button>
+        </div>-->
       </div>
 
       <!-- Reports Section -->
-      <div class="reports-section">
+      <div class="content-section" *ngIf="currentView === 'reports'">
         <div class="section-header">
           <h3 class="section-title">Reports ({{ filteredReports.length }})</h3>
           <button class="refresh-btn" (click)="refreshReports()">
@@ -112,7 +134,7 @@
         </div>
 
         <!-- Table View -->
-        <div class="table-container" *ngIf="currentView === 'table'">
+        <div class="table-container" *ngIf="displayMode === 'table'">
           <table class="reports-table" *ngIf="filteredReports.length > 0">
             <thead>
               <tr>
@@ -164,7 +186,7 @@
             </tbody>
           </table>
 
-          <!-- Empty State -->
+          <!-- Empty State for Reports Table -->
           <div class="empty-state" *ngIf="filteredReports.length === 0">
             <div class="empty-icon">📄</div>
             <div class="empty-title">No Reports Found</div>
@@ -176,7 +198,7 @@
         </div>
 
         <!-- Grid View -->
-        <div class="grid-container" *ngIf="currentView === 'grid'">
+        <div class="grid-container" *ngIf="displayMode === 'grid'">
           <div class="reports-grid">
             <div 
               *ngFor="let report of filteredReports; trackBy: trackByReportId" 
@@ -229,27 +251,99 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Progress Section (shown during report generation) -->
-        <div 
-          class="progress-section" 
-          *ngIf="generatingReportId !== null || generationStatus"
-        >
-          <div class="progress-info">
-            <div class="progress-spinner"></div>
-            <div class="progress-text">{{ generationMessage || 'Processing report...' }}</div>
-          </div>
-          <div class="progress-bar-container">
-            <div 
-              class="progress-bar" 
-              [style.width.%]="generationProgress"
-            ></div>
+      <!-- URLs Section -->
+      <div class="content-section" *ngIf="currentView === 'urls'">
+        <div class="section-header">
+          <h3 class="section-title">Metabase URLs ({{ filteredUrls.length }})</h3>
+          <button class="refresh-btn" (click)="refreshUrls()">
+            <span class="refresh-icon">🔄</span>
+            Refresh
+          </button>
+        </div>
+
+        <!-- URLs Table View (always table for URLs) -->
+        <div class="table-container">
+          <table class="urls-table" *ngIf="filteredUrls.length > 0">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <!--<th>Description</th>-->
+                <th>Assigned Date</th>
+                <th>Assigned By</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let url of filteredUrls; trackBy: trackByUrlId">
+                <td>
+                  <div class="url-info">
+                    <span class="url-icon">🔗</span>
+                    <span class="url-title">{{ url.metabaseTitle }}</span>
+                  </div>
+                </td>
+                 <!--<td>
+                  <div class="url-info">
+              
+                    <span class="url-title">{{ url.description }}</span>
+                  </div>
+                </td>-->
+                <td>{{ formatDate(url.assignedAt) }}</td>
+                <td>{{ url.assignedBy }}</td>
+                <td>
+                  <div class="actions">
+                    <button 
+                      class="action-btn view-btn" 
+                      (click)="onViewUrl(url.metabaseUrl)"
+                      title="Open URL"
+                    >
+                      Open
+                    </button>
+                   <!-- <button 
+                      class="action-btn copy-btn" 
+                      (click)="onCopyUrl(url.metabaseUrl)"
+                      title="Copy URL"
+                    >
+                      📋
+                    </button>-->
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Empty State for URLs -->
+          <div class="empty-state" *ngIf="filteredUrls.length === 0">
+            <div class="empty-icon">🔗</div>
+            <div class="empty-title">No URLs Found</div>
+            <div class="empty-text">
+              <span *ngIf="activeFilter === 'all' && !searchTerm">You don't have any URLs assigned yet.</span>
+              <span *ngIf="activeFilter !== 'all' || searchTerm">No URLs found for the selected filter or search term.</span>
+            </div>
           </div>
         </div>
       </div>
 
+      <!-- Progress Section (shown during report generation) -->
+      <div 
+        class="progress-section" 
+        *ngIf="generatingReportId !== null || generationStatus"
+      >
+        <div class="progress-info">
+          <div class="progress-spinner"></div>
+          <div class="progress-text">{{ generationMessage || 'Processing report...' }}</div>
+        </div>
+        <div class="progress-bar-container">
+          <div 
+            class="progress-bar" 
+            [style.width.%]="generationProgress"
+          ></div>
+        </div>
+      </div>
+
       <!-- Upload Section (Optional) -->
-      <div class="upload-section" *ngIf="showUploadSection">
+      <div class="upload-section" *ngIf="showUploadSection && currentView === 'reports'">
         <button class="upload-btn" (click)="onUploadAndGenerateReport()">
           <span>📤</span>
           Upload & Generate Report

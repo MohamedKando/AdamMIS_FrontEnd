@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { interval, Subscription } from 'rxjs';
-import { AuthService } from './services/auth.service';
+import { HeartbeatService } from './services/heartbeat.service';
 
 @Component({
   selector: 'app-root',
@@ -9,22 +8,14 @@ import { AuthService } from './services/auth.service';
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'AdamMIS';
-  private heartbeatSub?: Subscription;
 
-  constructor(private authService: AuthService) {}
+  constructor(private heartbeatService: HeartbeatService) {}
 
   ngOnInit() {
-    if (this.authService.isLoggedIn()) {
-      this.heartbeatSub = interval(60000).subscribe(() => { // every 60 seconds
-        this.authService.heartbeat().subscribe({
-          next: () => console.log('Heartbeat sent'),
-          error: err => console.error('Heartbeat failed', err)
-        });
-      });
-    }
+    this.heartbeatService.startHeartbeat();
   }
 
   ngOnDestroy() {
-    this.heartbeatSub?.unsubscribe();
+    this.heartbeatService.stopHeartbeat();
   }
 }

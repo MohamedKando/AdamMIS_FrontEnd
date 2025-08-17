@@ -31,6 +31,7 @@ import { LogsComponent } from './pages/Audiuts/action-logs/logs.component';
 import { AuditsComponent } from './pages/Audiuts/audits.component';
 import { JsonDisplayComponent } from './Helpers/json-display/json-display.component';
 import { ActivityLogsComponent } from './pages/Audiuts/activity-logs/activity-logs.component';
+import { MetabaseComponent } from './pages/dms-report/metabase/metabase.component';
 
 @NgModule({
   declarations: [
@@ -52,7 +53,8 @@ import { ActivityLogsComponent } from './pages/Audiuts/activity-logs/activity-lo
     LogsComponent,
     JsonDisplayComponent,
     AuditsComponent,
-    ActivityLogsComponent
+    ActivityLogsComponent,
+    MetabaseComponent
   ],
   imports: [
     BrowserModule,

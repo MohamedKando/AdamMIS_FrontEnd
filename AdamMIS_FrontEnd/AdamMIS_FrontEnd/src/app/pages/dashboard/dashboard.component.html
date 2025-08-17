@@ -1,91 +1,136 @@
-<div class="content-header">
-    <h2>Dashboard</h2>
-    <div class="breadcrumb">
-        <a href="#" routerLink="/dashboard">Home</a> > Dashboard
+<!-- Dashboard Header -->
+<!--<div class="dashboard-header">
+  <div class="header-content">
+    <div class="title-section">
+      <h1 class="dashboard-title">AdamMIS Dashboard</h1>
+      <div class="breadcrumb">
+        <a href="#" routerLink="/dashboard">Home</a>
+        <span class="separator">></span>
+        <span class="current">Dashboard</span>
+      </div>
     </div>
+    
+    <div class="header-actions">
+      <button class="refresh-btn" (click)="refreshData()" [disabled]="isLoadingUsers || isLoadingStats">
+        <i class="refresh-icon">↻</i>
+        Refresh
+      </button>
+      <div class="last-updated">
+        Last updated: {{ getCurrentTime() | date:'short' }}
+      </div>
+    </div>
+  </div>
+</div>-->
+
+<!-- Temporary Dashboard Notice -->
+<div class="temp-notice">
+  <div class="notice-content">
+    <div class="notice-icon">🚧</div>
+    <div class="notice-text">
+      <h3>Temporary Dashboard Preview</h3>
+      <p> The complete dashboard experience  is currently under development.</p>
+    </div>
+  </div>
 </div>
 
+<!-- Main Stats Grid -->
 <div class="stats-grid">
-    <div class="stat-card">
-        <h3>Total Reports</h3>
-        <div class="stat-number">247</div>
+  <!-- Total Users Card -->
+  <div class="stat-card primary">
+    <div class="stat-header">
+      <h3>Total Users</h3>
+      <div class="stat-icon">👥</div>
     </div>
-    <div class="stat-card">
-        <h3>Active Users</h3>
-        <div class="stat-number">89</div>
+    <div class="stat-content">
+      <div class="stat-number" *ngIf="!isLoadingUsers">{{ totalUsers }}</div>
+      <div class="stat-loading" *ngIf="isLoadingUsers">
+        <div class="loading-spinner"></div>
+      </div>
+      <div class="stat-description">Registered in system</div>
     </div>
-    <div class="stat-card">
-        <h3>Pending Tasks</h3>
-        <div class="stat-number">12</div>
+  </div>
+
+  <!-- Online Users Card -->
+  <div class="stat-card success">
+    <div class="stat-header">
+      <h3>Online Users</h3>
+      <div class="stat-icon">🟢</div>
     </div>
+    <div class="stat-content">
+      <div class="stat-number" *ngIf="!isLoadingUsers">{{ onlineUsers }}</div>
+      <div class="stat-loading" *ngIf="isLoadingUsers">
+        <div class="loading-spinner"></div>
+      </div>
+      <div class="stat-description">Currently active</div>
+      <div class="stat-percentage" *ngIf="totalUsers > 0">
+        {{ getPercentage(onlineUsers, totalUsers) }}% active
+      </div>
+    </div>
+  </div>
+
+  <!-- Offline Users Card -->
+  <div class="stat-card neutral">
+    <div class="stat-header">
+      <h3>Offline Users</h3>
+      <div class="stat-icon">⚪</div>
+    </div>
+    <div class="stat-content">
+      <div class="stat-number" *ngIf="!isLoadingUsers">{{ offlineUsers }}</div>
+      <div class="stat-loading" *ngIf="isLoadingUsers">
+        <div class="loading-spinner"></div>
+      </div>
+      <div class="stat-description">Currently inactive</div>
+      <div class="stat-percentage" *ngIf="totalUsers > 0">
+        {{ getPercentage(offlineUsers, totalUsers) }}% inactive
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's Activity Card -->
+  <!--<div class="stat-card warning">
+    <div class="stat-header">
+      <h3>Today's Activity</h3>
+      <div class="stat-icon">📊</div>
+    </div>
+    <div class="stat-content">
+      <div class="stat-number" *ngIf="!isLoadingStats">{{ activityStats.todayLogs }}</div>
+      <div class="stat-loading" *ngIf="isLoadingStats">
+        <div class="loading-spinner"></div>
+      </div>
+      <div class="stat-description">Actions performed</div>
+    </div>
+  </div>-->
 </div>
 
-<div class="card">
-    <h3>Welcome to AdamMIS</h3>
-    <p>Your dashboard is working perfectly! Select a menu item from the sidebar to navigate through the system.</p>
+<!-- Activity Overview Section -->
+
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+  <h3>Quick Actions</h3>
+  <div class="actions-grid">
+<button class="action-btn" routerLink="/dms-report/viewing" [queryParams]="{tab: 'metabase'}">
+  <div class="action-icon">📈</div>
+  <div class="action-text">
+    <div class="action-title">MB Reports</div>
+    <div class="action-desc">View Your Reports Quickly</div>
+  </div>
+</button>
+    
+    <button class="action-btn" routerLink="/audits/action-logs">
+      <div class="action-icon">👤</div>
+      <div class="action-text">
+        <div class="action-title">Action Logs</div>
+        <div class="action-desc">Watch What Happend !!</div>
+      </div>
+    </button>
+    
+    <button class="action-btn" routerLink="/audits/activity-logs">
+      <div class="action-icon">👤</div>
+      <div class="action-text">
+        <div class="action-title">Activity Logs</div>
+        <div class="action-desc">Know More About Users</div>
+      </div>
+    </button>
+  </div>
 </div>
-
-<style>
-    .content-header {
-        margin-bottom: 2rem;
-    }
-
-    .content-header h2 {
-        color: #2c3e50;
-        font-size: 1.75rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .breadcrumb {
-        color: #7f8c8d;
-        font-size: 0.9rem;
-    }
-
-    .breadcrumb a {
-        color: #3498db;
-        text-decoration: none;
-    }
-
-    .breadcrumb a:hover {
-        text-decoration: underline;
-    }
-
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .stat-card {
-        background: white;
-        border-radius: 8px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        border-left: 4px solid #3498db;
-        transition: transform 0.3s ease;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-    }
-
-    .stat-card h3 {
-        color: #2c3e50;
-        margin-bottom: 0.5rem;
-    }
-
-    .stat-card .stat-number {
-        font-size: 2rem;
-        font-weight: bold;
-        color: #3498db;
-    }
-
-    .card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-</style>

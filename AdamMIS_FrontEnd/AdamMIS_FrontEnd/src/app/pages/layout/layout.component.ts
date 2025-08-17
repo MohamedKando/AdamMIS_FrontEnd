@@ -64,9 +64,14 @@ export class LayoutComponent implements OnInit, OnDestroy {
       hasSubmenu: true,
       submenuItems: [
         { 
-          label: 'Report Management', 
+          label: 'Crystal Report Management', 
           route: '/dms-report/management', 
           permission: 'View Report Manager'
+        },
+                { 
+          label: 'MB Report Management', 
+          route: '/dms-report/metabase', 
+          //permission: 'View Report Manager'
         },
         { 
           label: 'Report Viewing', 

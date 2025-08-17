@@ -1,0 +1,380 @@
+<div class="metabase-management">
+  <!-- Header -->
+  <div class="header">
+    <h1>Metabase Management</h1>
+    <p>Manage URLs, assign them to users, and track assignment history</p>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages">
+    <div class="alert alert-success" *ngIf="success">
+      <i class="icon-check"></i>
+      {{ success }}
+      <button class="close-btn" (click)="clearMessages()">&times;</button>
+    </div>
+    <div class="alert alert-error" *ngIf="error">
+      <i class="icon-error"></i>
+      {{ error }}
+      <button class="close-btn" (click)="clearMessages()">&times;</button>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <nav class="tabs">
+    <button 
+      *ngFor="let tab of tabs" 
+      class="tab-btn" 
+      [class.active]="tab.active"
+      (click)="switchTab(tab.id)">
+      {{ tab.label }}
+    </button>
+  </nav>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+    
+    <!-- URL Management Tab -->
+    <div class="tab-pane" [class.active]="activeTab === 'urls'">
+      <div class="url-management">
+        
+        <!-- URL Form -->
+        <div class="form-section">
+          <h3>{{ editingUrl ? 'Edit URL' : 'Add New URL' }}</h3>
+          <form [formGroup]="urlForm" (ngSubmit)="onUrlSubmit()" class="url-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="title">Title *</label>
+                <input 
+                  type="text" 
+                  id="title" 
+                  formControlName="title"
+                  [class.invalid]="isUrlFormFieldInvalid('title')"
+                  placeholder="Enter URL title">
+                <div class="error-message" *ngIf="isUrlFormFieldInvalid('title')">
+                  {{ getUrlFormFieldError('title') }}
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="url">URL *</label>
+                <input 
+                  type="url" 
+                  id="url" 
+                  formControlName="url"
+                  [class.invalid]="isUrlFormFieldInvalid('url')"
+                  placeholder="https://example.com">
+                <div class="error-message" *ngIf="isUrlFormFieldInvalid('url')">
+                  {{ getUrlFormFieldError('url') }}
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="description">Description *</label>
+              <textarea 
+                id="description" 
+                formControlName="description"
+                [class.invalid]="isUrlFormFieldInvalid('description')"
+                placeholder="Enter URL description"
+                rows="3"></textarea>
+              <div class="error-message" *ngIf="isUrlFormFieldInvalid('description')">
+                {{ getUrlFormFieldError('description') }}
+              </div>
+            </div>
+            <div class="form-actions">
+              <button 
+                type="submit" 
+                class="btn btn-primary"
+                [disabled]="urlForm.invalid || loading">
+                {{ editingUrl ? 'Update URL' : 'Add URL' }}
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-secondary"
+                *ngIf="editingUrl"
+                (click)="resetUrlForm()">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- URLs List -->
+        <div class="urls-section">
+          <div class="section-header">
+            <h3>Existing URLs ({{ filteredUrls.length }} of {{ urls.length }})</h3>
+            <!-- URL Search -->
+            <div class="search-box">
+              <input 
+                type="text" 
+                [(ngModel)]="urlSearchTerm" 
+                (input)="onUrlSearch()"
+                placeholder="Search URLs by title, description, or URL..."
+                class="search-input">
+              <button class="btn-icon" (click)="clearUrlSearch()" *ngIf="urlSearchTerm">
+                <i class="icon-close"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="urls-grid" *ngIf="filteredUrls.length > 0; else noUrls">
+            <div class="url-card" *ngFor="let url of filteredUrls">
+              <div class="url-header">
+                <h4>{{ url.title }}</h4>
+                <div class="url-actions">
+                  <button class="btn-icon" (click)="editUrl(url)" title="Edit">
+                    <i class="icon-edit"></i>
+                  </button>
+                  <button class="btn-icon delete" (click)="deleteUrl(url)" title="Delete">
+                    <i class="icon-delete"></i>
+                  </button>
+                </div>
+              </div>
+              <p class="url-description">{{ url.description }}</p>
+              <p class="url-link">
+                <a [href]="url.url" target="_blank">{{ url.url }}</a>
+              </p>
+              <div class="url-meta">
+                <span>Created: {{ formatDate(url.createdAt) }}</span>
+                <span>By: {{ url.createdBy }}</span>
+              </div>
+            </div>
+          </div>
+          <ng-template #noUrls>
+            <div class="empty-state">
+              <i class="icon-url"></i>
+              <p *ngIf="urlSearchTerm">No URLs found matching "{{ urlSearchTerm }}"</p>
+              <p *ngIf="!urlSearchTerm">No URLs found. Add your first URL using the form above.</p>
+            </div>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assignments Tab -->
+    <div class="tab-pane" [class.active]="activeTab === 'assignments'">
+      <div class="assignments-management">
+        
+        <!-- Assignment Form -->
+        <div class="form-section">
+          <h3>Assign URLs to Users</h3>
+          <div class="assignment-form">
+            <div class="selection-row">
+              
+              <!-- URL Selection -->
+              <div class="selection-group">
+                <div class="selection-header">
+                  <h4>Select URLs</h4>
+                  <!-- URL Search in Assignment -->
+                  <div class="search-box-small">
+                    <input 
+                      type="text" 
+                      [(ngModel)]="urlSearchTerm" 
+                      (input)="onUrlSearch()"
+                      placeholder="Search URLs..."
+                      class="search-input-small">
+                  </div>
+                </div>
+                <div class="selection-list">
+                  <label class="selection-item" *ngFor="let url of filteredUrls">
+                    <input 
+                      type="checkbox" 
+                      [checked]="isUrlSelected(url.id)"
+                      (change)="toggleUrlSelection(url.id)">
+                    <span class="selection-label">
+                      <strong>{{ url.title }}</strong>
+                      <small>{{ url.url }}</small>
+                      <small class="description">{{ url.description }}</small>
+                    </span>
+                  </label>
+                  <div class="empty-state" *ngIf="filteredUrls.length === 0 && urlSearchTerm">
+                    <p>No URLs found matching "{{ urlSearchTerm }}"</p>
+                  </div>
+                  <div class="empty-state" *ngIf="urls.length === 0">
+                    <p>No URLs available. Add URLs in the URL Management tab first.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- User Selection -->
+              <div class="selection-group">
+                <div class="selection-header">
+                  <h4>Select Users</h4>
+                  <!-- User Search in Assignment -->
+                  <div class="search-box-small">
+                    <input 
+                      type="text" 
+                      [(ngModel)]="userSearchTerm" 
+                      (input)="onUserSearch()"
+                      placeholder="Search users..."
+                      class="search-input-small">
+                  </div>
+                </div>
+                <div class="selection-list">
+                  <label class="selection-item" *ngFor="let user of filteredUsers">
+                    <input 
+                      type="checkbox" 
+                      [checked]="isUserSelected(user.id)"
+                      (change)="toggleUserSelection(user.id)">
+                    <span class="selection-label">
+                      <strong>{{ user.userName }}</strong>
+                      <small *ngIf="user.email">{{ user.email }}</small>
+                      <small *ngIf="user.department">{{ user.department.name }}</small>
+                    </span>
+                  </label>
+                  <div class="empty-state" *ngIf="filteredUsers.length === 0 && userSearchTerm">
+                    <p>No users found matching "{{ userSearchTerm }}"</p>
+                  </div>
+                  <div class="empty-state" *ngIf="users.length === 0">
+                    <p>No users available.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Assignment Summary -->
+            <div class="assignment-summary" *ngIf="selectedUrls.length > 0 || selectedUsers.length > 0">
+              <div class="summary-item">
+                <strong>Selected URLs:</strong> {{ selectedUrls.length }}
+              </div>
+              <div class="summary-item">
+                <strong>Selected Users:</strong> {{ selectedUsers.length }}
+              </div>
+              <div class="summary-item">
+                <strong>Total Assignments:</strong> {{ selectedUrls.length * selectedUsers.length }}
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button 
+                class="btn btn-primary"
+                [disabled]="selectedUrls.length === 0 || selectedUsers.length === 0 || loading"
+                (click)="onAssignmentSubmit()">
+                Create Assignments
+              </button>
+              <button 
+                class="btn btn-secondary"
+                (click)="resetAssignmentForm()"
+                [disabled]="selectedUrls.length === 0 && selectedUsers.length === 0">
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assignment History Tab -->
+    <div class="tab-pane" [class.active]="activeTab === 'history'">
+      <div class="history-section">
+        <div class="history-header">
+          <h3>Assignment History</h3>
+          
+          <!-- Assignment Search -->
+          <div class="search-box">
+            <input 
+              type="text" 
+              [(ngModel)]="searchTerm" 
+              (input)="onAssignmentSearch()"
+              placeholder="Search assignments by user, URL title, or URL..."
+              class="search-input">
+            <button class="btn-icon" (click)="clearAssignmentSearch()" *ngIf="searchTerm">
+              <i class="icon-close"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Assignments Table -->
+        <div class="table-container" *ngIf="filteredAssignments.length > 0; else noAssignments">
+          <table class="assignments-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>URL Title</th>
+                <th>URL</th>
+                <th>Description</th>
+                <th>Assigned Date</th>
+                <th>Assigned By</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let assignment of paginatedAssignments">
+                <td>
+                  <div class="user-info">
+                    <strong>{{ assignment.userName }}</strong>
+                    <small>ID: {{ assignment.userId }}</small>
+                  </div>
+                </td>
+                <td>{{ assignment.metabaseTitle }}</td>
+                <td>
+                  <a [href]="assignment.metabaseUrl" target="_blank" class="url-link">
+                    {{ assignment.metabaseUrl }}
+                  </a>
+                </td>
+                <td>{{ assignment.description }}</td>
+                <td>{{ formatDate(assignment.assignedAt) }}</td>
+                <td>{{ assignment.assignedBy }}</td>
+                <td>
+                  <button 
+                    class="btn btn-danger btn-sm"
+                    (click)="removeAssignment(assignment)"
+                    title="Remove Assignment">
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Pagination -->
+          <div class="pagination" *ngIf="totalPages > 1">
+            <button 
+              class="btn btn-secondary btn-sm"
+              [disabled]="currentPage === 1"
+              (click)="previousPage()">
+              Previous
+            </button>
+            
+            <div class="page-numbers">
+              <button 
+                *ngFor="let page of pageNumbers"
+                class="btn btn-sm"
+                [class.btn-primary]="page === currentPage"
+                [class.btn-secondary]="page !== currentPage"
+                (click)="goToPage(page)">
+                {{ page }}
+              </button>
+            </div>
+            
+            <button 
+              class="btn btn-secondary btn-sm"
+              [disabled]="currentPage === totalPages"
+              (click)="nextPage()">
+              Next
+            </button>
+          </div>
+
+          <!-- Items per page info -->
+          <div class="pagination-info">
+            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} - 
+            {{ getEndIndex() }}
+            of {{ totalItems }} assignments
+          </div>
+        </div>
+
+        <ng-template #noAssignments>
+          <div class="empty-state">
+            <i class="icon-assignment"></i>
+            <p *ngIf="searchTerm">No assignments found matching "{{ searchTerm }}"</p>
+            <p *ngIf="!searchTerm">No assignments found. Create some assignments in the Assignments tab.</p>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>
