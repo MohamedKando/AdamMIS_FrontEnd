@@ -90,6 +90,10 @@ export class UserService {
   private baseUrl = 'http://192.168.1.203:8080/api/User';
   private baseRoleUrl = 'http://192.168.1.203:8080/api';
 
+
+  private LocalbaseUrl = 'https://localhost:7209/api/User';
+  private LocalbaseRoleUrl = 'https://localhost:7209/api';
+
   constructor(private http: HttpClient) {}
 
   /** GET all users with roles except SuperAdmin */
