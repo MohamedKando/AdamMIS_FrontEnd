@@ -87,12 +87,12 @@ export interface DepartmentResponse {
   providedIn: 'root'
 })
 export class UserService {
-  //rivate LocalbaseUrl = 'http://192.168.1.203:8080/api/User';
-  //private LocalbaseRoleUrl = 'http://192.168.1.203:8080/api';
+  private baseUrl = 'http://192.168.1.203:8080/api/User';
+  private baseRoleUrl = 'http://192.168.1.203:8080/api';
 
 
-  private baseUrl = 'https://localhost:7209/api/User';
-  private baseRoleUrl = 'https://localhost:7209/api';
+  private LocalbaseUrl = 'https://localhost:7209/api/User';
+  private LocalbaseRoleUrl = 'https://localhost:7209/api';
 
   constructor(private http: HttpClient) {}
 
