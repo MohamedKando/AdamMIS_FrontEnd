@@ -81,8 +81,8 @@ export interface GenerateReportResponse {
   providedIn: 'root'
 })
 export class ReportService {
-  private apiUrl = 'http://192.168.1.203:8080/api/Reports';
-  private LocalapiUrl = 'https://localhost:7209/api/Reports';
+  private LocalapiUrl = 'http://192.168.1.203:8080/api/Reports';
+  private apiUrl = 'https://localhost:7209/api/Reports';
   
   constructor(private http: HttpClient) {}
 

@@ -87,12 +87,12 @@ export interface DepartmentResponse {
   providedIn: 'root'
 })
 export class UserService {
-  private baseUrl = 'http://192.168.1.203:8080/api/User';
-  private baseRoleUrl = 'http://192.168.1.203:8080/api';
+  //rivate LocalbaseUrl = 'http://192.168.1.203:8080/api/User';
+  //private LocalbaseRoleUrl = 'http://192.168.1.203:8080/api';
 
 
-  private LocalbaseUrl = 'https://localhost:7209/api/User';
-  private LocalbaseRoleUrl = 'https://localhost:7209/api';
+  private baseUrl = 'https://localhost:7209/api/User';
+  private baseRoleUrl = 'https://localhost:7209/api';
 
   constructor(private http: HttpClient) {}
 
@@ -169,13 +169,15 @@ uploadUserPhoto(userId: string, photo: File): Observable<string> {
 }
 
   /** Helper method to get full photo URL */
-  getPhotoUrl(photoPath: string | undefined | null): string {
-    if (!photoPath) {
-      return 'assets/images/AdamLogo.png'; // Default avatar path
-    }
-    // Remove leading slash if present and construct full URL
-    const cleanPath = photoPath.startsWith('/') ? photoPath.substring(1) : photoPath;
-    return `http://192.168.1.203:8080/${cleanPath}`;
+/** Helper method to get full photo URL */
+/** Helper method to get full photo URL */
+getPhotoUrl(photoPath: string | undefined | null): string {
+  if (!photoPath) {
+    return 'assets/images/AdamLogo.png'; // Default avatar path
   }
+  // Remove leading slash if present and construct full URL
+  const cleanPath = photoPath.startsWith('/') ? photoPath.substring(1) : photoPath;
+  return `http://192.168.1.203:8080/user-photos/${cleanPath}`;
+}
   
 }
