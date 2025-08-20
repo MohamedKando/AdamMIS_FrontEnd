@@ -31,6 +31,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   // Navigation state
   isNavCollapsed = false;
+  isHoverExpanded = false; // New property for hover state
   
   // User menu state
   showUserMenu = false;
@@ -68,7 +69,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
           route: '/dms-report/management', 
           permission: 'View Report Manager'
         },
-                { 
+        { 
           label: 'MB Report Management', 
           route: '/dms-report/metabase', 
           //permission: 'View Report Manager'
@@ -124,7 +125,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     private router: Router, 
     private authService: AuthService,
     private userService: UserService,
-    private notificationService: NotificationService // Add NotificationService injection
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -174,14 +175,25 @@ export class LayoutComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Sidebar hover methods
+  onSidebarMouseEnter(): void {
+    if (this.isNavCollapsed) {
+      this.isHoverExpanded = true;
+    }
+  }
+
+  onSidebarMouseLeave(): void {
+    this.isHoverExpanded = false;
+  }
+
   // Permission and role checks
   isSuperAdmin(): boolean {
     return this.authService.isSuperAdmin();
   }
 
-hasPermission(permission: string | string[]): boolean {
-  return this.authService.hasPermission(permission);
-}
+  hasPermission(permission: string | string[]): boolean {
+    return this.authService.hasPermission(permission);
+  }
 
   // User information loading
   loadUserInfo(): void {
@@ -266,8 +278,8 @@ hasPermission(permission: string | string[]): boolean {
   }
 
   toggleSubmenu(menuKey: string): void {
-    // Don't allow submenu expansion when navigation is collapsed
-    if (!this.isNavCollapsed) {
+    // Allow submenu expansion when navigation is collapsed only if hovering
+    if (!this.isNavCollapsed || this.isHoverExpanded) {
       this.expandedMenus[menuKey] = !this.expandedMenus[menuKey];
     }
   }
@@ -275,6 +287,8 @@ hasPermission(permission: string | string[]): boolean {
   // Navigation collapse methods
   toggleNavigation(): void {
     this.isNavCollapsed = !this.isNavCollapsed;
+    this.isHoverExpanded = false; // Reset hover state when toggling
+    
     // Close all submenus when collapsing navigation
     if (this.isNavCollapsed) {
       Object.keys(this.expandedMenus).forEach(key => {
@@ -306,55 +320,54 @@ hasPermission(permission: string | string[]): boolean {
     this.closeUserMenu(); // Close the user menu
   }
 
-  // Handle logout confirmation
-// Handle logout confirmation - Updated to work with the new AuthService
-onLogoutConfirmed(): void {
-  try {
-    // Reset the modal visibility first
-    this.showLogoutConfirmation = false;
-    
-    // Call the auth service logout which now handles logging
-    this.authService.logout().subscribe({
-      next: (response) => {
-        // Clear auth data after successful logout tracking
-        this.authService.clearAuthData();
-        
-        // Show success toast
-        this.notificationService.showSuccess('Successfully logged out. See you soon!', 2000);
-        
-        // Navigate to login page
-        this.router.navigate(['/login']);
-      },
-      error: (error: any) => {
-        // Even if logging fails, still logout the user
-        console.warn('Logout logging failed, but proceeding with logout:', error);
-        
-        // Clear auth data anyway
-        this.authService.clearAuthData();
-        
-        // Show success toast (since logout still happened)
-        this.notificationService.showSuccess('Successfully logged out. See you soon!', 2000);
-        
-        // Navigate to login page
-        this.router.navigate(['/login']);
-      }
-    });
-    
-  } catch (error) {
-    // Reset modal visibility on error too
-    this.showLogoutConfirmation = false;
-    
-    // Fallback - clear auth data anyway
-    this.authService.clearAuthData();
-    
-    // Show error toast
-    this.notificationService.showError('An error occurred during logout. Please try again.', 5000);
-    console.error('Logout error:', error);
-    
-    // Still navigate to login as a fallback
-    this.router.navigate(['/login']);
+  // Handle logout confirmation - Updated to work with the new AuthService
+  onLogoutConfirmed(): void {
+    try {
+      // Reset the modal visibility first
+      this.showLogoutConfirmation = false;
+      
+      // Call the auth service logout which now handles logging
+      this.authService.logout().subscribe({
+        next: (response) => {
+          // Clear auth data after successful logout tracking
+          this.authService.clearAuthData();
+          
+          // Show success toast
+          this.notificationService.showSuccess('Successfully logged out. See you soon!', 2000);
+          
+          // Navigate to login page
+          this.router.navigate(['/login']);
+        },
+        error: (error: any) => {
+          // Even if logging fails, still logout the user
+          console.warn('Logout logging failed, but proceeding with logout:', error);
+          
+          // Clear auth data anyway
+          this.authService.clearAuthData();
+          
+          // Show success toast (since logout still happened)
+          this.notificationService.showSuccess('Successfully logged out. See you soon!', 2000);
+          
+          // Navigate to login page
+          this.router.navigate(['/login']);
+        }
+      });
+      
+    } catch (error) {
+      // Reset modal visibility on error too
+      this.showLogoutConfirmation = false;
+      
+      // Fallback - clear auth data anyway
+      this.authService.clearAuthData();
+      
+      // Show error toast
+      this.notificationService.showError('An error occurred during logout. Please try again.', 5000);
+      console.error('Logout error:', error);
+      
+      // Still navigate to login as a fallback
+      this.router.navigate(['/login']);
+    }
   }
-}
 
   // Handle logout cancellation
   onLogoutCancelled(): void {

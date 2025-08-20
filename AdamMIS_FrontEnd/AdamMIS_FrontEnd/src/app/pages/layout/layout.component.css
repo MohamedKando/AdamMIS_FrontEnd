@@ -11,6 +11,76 @@ body {
   color: #333;
 }
 
+/* User photo styles */
+.user-photo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-right: 10px;
+}
+
+.user-photo-large {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-section-button {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.welcome-section-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.welcome-section-button.active {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.user-details {
+  margin-left: 12px;
+}
+
+.user-details .name {
+  font-weight: 600;
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.user-details .roles {
+  font-size: 12px;
+  color: #666;
+  text-transform: capitalize;
+}
+
 /* Enhanced Header styles */
 .header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -259,7 +329,7 @@ body {
   margin: 0;
 }
 
-/* Sidebar styles */
+/* Sidebar styles with hover functionality */
 .sidebar {
   position: fixed;
   left: 0;
@@ -276,8 +346,15 @@ body {
   box-shadow: 2px 0 10px rgba(0,0,0,0.1);
 }
 
+/* Collapsed state */
 .sidebar.collapsed {
   width: 70px;
+}
+
+/* Hover expanded state - only when collapsed */
+.sidebar.collapsed.hover-expanded {
+  width: 280px;
+  box-shadow: 4px 0 20px rgba(0,0,0,0.2);
 }
 
 .sidebar::-webkit-scrollbar {
@@ -291,40 +368,6 @@ body {
 .sidebar::-webkit-scrollbar-thumb {
   background: #555;
   border-radius: 3px;
-}
-
-/* Navigation toggle button */
-.nav-toggle-btn {
-  position: absolute;
-  right: -15px;
-  top: 20px;
-  background: #3498db;
-  border: none;
-  color: white;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  transition: all 0.3s ease;
-  z-index: 1001;
-}
-
-.nav-toggle-btn:hover {
-  background: #2980b9;
-  transform: scale(1.1);
-}
-
-.toggle-icon {
-  transition: transform 0.3s ease;
-}
-
-.toggle-icon.rotated {
-  transform: rotate(180deg);
 }
 
 /* Navigation items */
@@ -376,7 +419,8 @@ body {
   transition: opacity 0.3s ease;
 }
 
-.sidebar.collapsed .nav-text {
+/* Hide nav text when collapsed and not hovering */
+.sidebar.collapsed:not(.hover-expanded) .nav-text {
   opacity: 0;
   width: 0;
 }
@@ -391,7 +435,8 @@ body {
   transform: rotate(180deg);
 }
 
-.sidebar.collapsed .submenu-arrow {
+/* Hide submenu arrow when collapsed and not hovering */
+.sidebar.collapsed:not(.hover-expanded) .submenu-arrow {
   display: none;
 }
 
@@ -407,8 +452,9 @@ body {
   max-height: 300px;
 }
 
-.sidebar.collapsed .submenu.expanded {
-  max-height: 0;
+/* Hide submenu when collapsed and not hovering */
+.submenu.collapsed-nav {
+  max-height: 0 !important;
 }
 
 .submenu-item {
@@ -449,7 +495,7 @@ body {
   font-weight: 400;
 }
 
-/* Main content */
+/* Main content adjustments */
 .main-content {
   margin-left: 280px;
   margin-top: 70px;
@@ -463,8 +509,13 @@ body {
   margin-left: 70px;
 }
 
-/* Tooltip for collapsed sidebar */
-.sidebar.collapsed .nav-item > a::after {
+/* Adjust main content when hover expanding */
+.main-content.nav-hover-expanded {
+  margin-left: 70px; /* Keep collapsed margin when hover expanding */
+}
+
+/* Tooltip for collapsed sidebar (only when not hover expanded) */
+.sidebar.collapsed:not(.hover-expanded) .nav-item > a::after {
   content: attr(title);
   position: absolute;
   left: 70px;
@@ -483,7 +534,7 @@ body {
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-.sidebar.collapsed .nav-item > a:hover::after {
+.sidebar.collapsed:not(.hover-expanded) .nav-item > a:hover::after {
   opacity: 1;
 }
 
@@ -540,6 +591,11 @@ body {
   
   .main-content.nav-collapsed {
     margin-left: 0;
+  }
+
+  /* Disable hover expand on mobile */
+  .sidebar.collapsed.hover-expanded {
+    width: 70px;
   }
 }
 
