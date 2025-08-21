@@ -1,7 +1,36 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { LogService, ActivityLogs, ActivityStats }  from '../../services/log.service';
+import { LogService, ActivityLogs, ActivityStats } from '../../services/log.service';
+import { AuthService } from '../../services/auth.service'; // Import AuthService
 import { interval, Subscription } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
+
+interface SystemConfig {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  type: 'desktop' | 'web';
+  path?: string;
+  url?: string;
+  permission: string | string[]; // Can be single permission or array of permissions
+  color: string;
+  order: number;
+  enabled: boolean;
+  requiresElevatedPermission?: boolean; // For systems requiring special access
+}
+
+interface QuickActionConfig {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  route: string;
+  queryParams?: any;
+  permission: string | string[];
+  color: string;
+  order: number;
+  enabled: boolean;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -34,9 +63,120 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Chart data for activity breakdown
   actionBreakdownData: { name: string; value: number; color: string }[] = [];
   
-  constructor(private logService: LogService) {}
+  // System configurations - easily configurable
+  systemConfigs: SystemConfig[] = [
+    {
+      id: 'h-system',
+      name: 'H System',
+      description: 'Hospital Management',
+      icon: '🏥',
+      type: 'desktop',
+      path: 'C:\\Program Files\\H-System\\H-System.exe',
+      permission: ['View H DMS'], // Multiple permissions (user needs ANY of these)
+      color: '#e74c3c',
+      order: 1,
+      enabled: true
+    },
+    {
+      id: 'f-system',
+      name: 'F System',
+      description: 'Financial Management',
+      icon: '💰',
+      type: 'desktop',
+      path: 'C:\\Program Files\\F-System\\F-System.exe',
+      permission: 'View F DMS', // Single permission
+      color: '#f39c12',
+      order: 2,
+      enabled: true
+    },
+    {
+      id: 'mrm-system',
+      name: 'MRM System',
+      description: 'Medical Records Management',
+      icon: '📋',
+      type: 'web',
+      url: 'http://192.168.0.135/EMR/MRM_5.2',
+      permission: ['View MRM'],
+      color: '#3498db',
+      order: 3,
+      enabled: true
+    },
+    {
+      id: 'amis-system',
+      name: 'AMIS System',
+      description: 'Web-based Management',
+      icon: '🌐',
+      type: 'web',
+      url: 'http://192.168.1.201/Pages/MainPage.aspx',
+      permission: 'View AIMS',
+      color: '#2ecc71',
+      order: 4,
+      enabled: true
+    }
+
+  ];
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // Quick actions configurations
+  quickActionConfigs: QuickActionConfig[] = [
+    {
+      id: 'mb-reports',
+      title: 'MB Reports',
+      description: 'View Your Reports Quickly',
+      icon: '📈',
+      route: '/dms-report/viewing',
+      queryParams: { tab: 'metabase' },
+      permission: 'Read Reports',
+      color: '#3498db',
+      order: 1,
+      enabled: true
+    },
+    {
+      id: 'action-logs',
+      title: 'Action Logs',
+      description: 'Watch What Happened!',
+      icon: '📝',
+      route: '/audits/action-logs',
+      permission: ['View System Logs'],
+      color: '#e74c3c',
+      order: 2,
+      enabled: true
+    },
+    {
+      id: 'activity-logs',
+      title: 'Activity Logs',
+      description: 'Know More About Users',
+      icon: '👤',
+      route: '/audits/activity-logs',
+      permission: 'View Activity Logs',
+      color: '#f39c12',
+      order: 3,
+      enabled: true
+    }
+  ];
+
+  // Filtered configurations based on user permissions
+  availableSystems: SystemConfig[] = [];
+  availableQuickActions: QuickActionConfig[] = [];
+  
+  constructor(
+    private logService: LogService,
+    public authService: AuthService // Make public for template access
+  ) {}
 
   ngOnInit() {
+    this.filterSystemsByPermissions();
     this.loadDashboardData();
     this.startAutoRefresh();
   }
@@ -47,8 +187,102 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Filter systems and quick actions based on user permissions
+   */
+  private filterSystemsByPermissions() {
+    // Filter systems based on permissions
+    this.availableSystems = this.systemConfigs
+      .filter(system => system.enabled && this.hasPermissionForSystem(system))
+      .sort((a, b) => a.order - b.order);
+
+    // Filter quick actions based on permissions
+    this.availableQuickActions = this.quickActionConfigs
+      .filter(action => action.enabled && this.hasPermissionForAction(action))
+      .sort((a, b) => a.order - b.order);
+
+    console.log('Available systems for user:', this.availableSystems.map(s => s.name));
+    console.log('Available quick actions for user:', this.availableQuickActions.map(a => a.title));
+  }
+
+  /**
+   * Check if user has permission to access a system
+   */
+  private hasPermissionForSystem(system: SystemConfig): boolean {
+    // SuperAdmin has access to everything
+    /*if (this.authService.isSuperAdmin()) {
+      return true;
+    }
+
+    // Check if system requires elevated permissions
+    if (system.requiresElevatedPermission && !this.authService.hasAnyRole(['Admin', 'SystemManager'])) {
+      return false;
+    }*/
+
+    // Check permissions
+    return this.authService.hasPermission(system.permission);
+  }
+
+  /**
+   * Check if user has permission to access a quick action
+   */
+  private hasPermissionForAction(action: QuickActionConfig): boolean {
+    // SuperAdmin has access to everything
+    if (this.authService.isSuperAdmin()) {
+      return true;
+    }
+
+    return this.authService.hasPermission(action.permission);
+  }
+
+  /**
+   * Navigate to a system - handles both desktop and web systems
+   */
+  navigateToSystem(systemConfig: SystemConfig): void {
+    try {
+      if (systemConfig.type === 'desktop') {
+        this.openDesktopApp(systemConfig);
+      } else if (systemConfig.type === 'web') {
+        this.openWebSystem(systemConfig);
+      }
+    } catch (error) {
+      console.error(`Failed to navigate to ${systemConfig.name}:`, error);
+      alert(`Failed to open ${systemConfig.name}. Please try again or contact support.`);
+    }
+  }
+
+  /**
+   * Opens a desktop application
+   */
+  private openDesktopApp(systemConfig: SystemConfig): void {
+    if (!systemConfig.path) {
+      alert(`No path configured for ${systemConfig.name}`);
+      return;
+    }
+
+    // Check if we're in an Electron environment
+    if ((window as any).electronAPI) {
+      (window as any).electronAPI.openDesktopApp(systemConfig.path);
+    } else {
+      console.warn(`Cannot launch desktop application ${systemConfig.name} from web browser`);
+      alert(`To launch ${systemConfig.name}, please use the desktop version of this application.`);
+    }
+  }
+
+  /**
+   * Opens a web system in browser
+   */
+  private openWebSystem(systemConfig: SystemConfig): void {
+    if (!systemConfig.url) {
+      alert(`No URL configured for ${systemConfig.name}`);
+      return;
+    }
+
+    window.open(systemConfig.url, '_blank', 'noopener,noreferrer');
+  }
+
+  // Existing methods remain the same...
   private startAutoRefresh() {
-    // Refresh data every 30 seconds
     this.refreshSubscription = interval(30000)
       .pipe(switchMap(() => this.loadDashboardData()))
       .subscribe();
@@ -58,7 +292,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadActivityLogs();
     this.loadActivityStats();
     
-    // Return a promise for the auto-refresh subscription
     return Promise.all([
       this.loadActivityLogs(),
       this.loadActivityStats()
@@ -77,7 +310,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Failed to load activity logs:', error);
         this.isLoadingUsers = false;
-        // Set fallback data
         this.activityLogs = [];
         this.calculateUserStats();
       }
@@ -149,6 +381,86 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   refreshData() {
+    this.filterSystemsByPermissions(); // Re-filter on refresh in case permissions changed
     this.loadDashboardData();
+  }
+
+  /**
+   * Add new system configuration at runtime
+   */
+  addSystemConfig(config: SystemConfig): void {
+    this.systemConfigs.push(config);
+    this.filterSystemsByPermissions();
+  }
+
+  /**
+   * Update existing system configuration
+   */
+  updateSystemConfig(id: string, updates: Partial<SystemConfig>): void {
+    const index = this.systemConfigs.findIndex(config => config.id === id);
+    if (index !== -1) {
+      this.systemConfigs[index] = { ...this.systemConfigs[index], ...updates };
+      this.filterSystemsByPermissions();
+    }
+  }
+
+  /**
+   * Remove system configuration
+   */
+  removeSystemConfig(id: string): void {
+    this.systemConfigs = this.systemConfigs.filter(config => config.id !== id);
+    this.filterSystemsByPermissions();
+  }
+
+  /**
+   * Enable/disable system
+   */
+  toggleSystemEnabled(id: string, enabled: boolean): void {
+    this.updateSystemConfig(id, { enabled });
+  }
+
+  /**
+   * TrackBy functions for ngFor optimization
+   */
+  trackBySystemId(index: number, system: SystemConfig): string {
+    return system.id;
+  }
+
+  trackByActionId(index: number, action: QuickActionConfig): string {
+    return action.id;
+  }
+
+  /**
+   * Get user's current permissions (for debugging/admin purposes)
+   */
+  getUserPermissionInfo(): any {
+    return {
+      userName: this.authService.getUserName(),
+      roles: this.authService.getUserRoles(),
+      permissions: this.authService.getUserPermissions(),
+      isSuperAdmin: this.authService.isSuperAdmin()
+    };
+  }
+
+  /**
+   * Check if user can access a specific system by ID
+   */
+  canAccessSystem(systemId: string): boolean {
+    const system = this.systemConfigs.find(s => s.id === systemId);
+    return system ? this.hasPermissionForSystem(system) : false;
+  }
+
+  /**
+   * Get all system configurations (for admin purposes)
+   */
+  getAllSystemConfigs(): SystemConfig[] {
+    return this.systemConfigs;
+  }
+
+  /**
+   * Get available systems for current user
+   */
+  getAvailableSystems(): SystemConfig[] {
+    return this.availableSystems;
   }
 }

@@ -72,7 +72,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
         { 
           label: 'MB Report Management', 
           route: '/dms-report/metabase', 
-          //permission: 'View Report Manager'
+          permission: 'View Report Manager'
         },
         { 
           label: 'Report Viewing', 
@@ -130,7 +130,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadUserInfo();
-    
+    console.log('User permissions:', this.authService.getUserPermissions());
+console.log('Has View MRM permission:', this.hasPermission(['View MRM']));
+console.log('Has View MRM permission (single):', this.hasPermission('View MRM'));
     // Listen for route changes and window focus to refresh user info
     this.router.events.subscribe(() => {
       if (this.authService.isLoggedIn()) {

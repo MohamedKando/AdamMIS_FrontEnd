@@ -1,34 +1,10 @@
-<!-- Dashboard Header -->
-<!--<div class="dashboard-header">
-  <div class="header-content">
-    <div class="title-section">
-      <h1 class="dashboard-title">AdamMIS Dashboard</h1>
-      <div class="breadcrumb">
-        <a href="#" routerLink="/dashboard">Home</a>
-        <span class="separator">></span>
-        <span class="current">Dashboard</span>
-      </div>
-    </div>
-    
-    <div class="header-actions">
-      <button class="refresh-btn" (click)="refreshData()" [disabled]="isLoadingUsers || isLoadingStats">
-        <i class="refresh-icon">↻</i>
-        Refresh
-      </button>
-      <div class="last-updated">
-        Last updated: {{ getCurrentTime() | date:'short' }}
-      </div>
-    </div>
-  </div>
-</div>-->
-
 <!-- Temporary Dashboard Notice -->
 <div class="temp-notice">
   <div class="notice-content">
     <div class="notice-icon">🚧</div>
     <div class="notice-text">
       <h3>Temporary Dashboard Preview</h3>
-      <p> The complete dashboard experience  is currently under development.</p>
+      <p>The complete dashboard experience is currently under development.</p>
     </div>
   </div>
 </div>
@@ -85,52 +61,93 @@
       </div>
     </div>
   </div>
-
-  <!-- Today's Activity Card -->
-  <!--<div class="stat-card warning">
-    <div class="stat-header">
-      <h3>Today's Activity</h3>
-      <div class="stat-icon">📊</div>
-    </div>
-    <div class="stat-content">
-      <div class="stat-number" *ngIf="!isLoadingStats">{{ activityStats.todayLogs }}</div>
-      <div class="stat-loading" *ngIf="isLoadingStats">
-        <div class="loading-spinner"></div>
-      </div>
-      <div class="stat-description">Actions performed</div>
-    </div>
-  </div>-->
 </div>
 
-<!-- Activity Overview Section -->
+<!-- System Navigation Section -->
+<div class="system-navigation" *ngIf="availableSystems.length > 0">
+  <div class="section-header">
+    <h3>System Navigation</h3>
+    <div class="system-count">{{ availableSystems.length }} system(s) available</div>
+  </div>
+  
+  <div class="systems-grid">
+    <button 
+      *ngFor="let system of availableSystems; trackBy: trackBySystemId" 
+      class="system-btn"
+      [class]="'system-' + system.id"
+      [style.--system-color]="system.color"
+      (click)="navigateToSystem(system)"
+      [title]="system.description + (system.requiresElevatedPermission ? ' (Requires elevated permissions)' : '')"
+    >
+      <div class="system-icon">{{ system.icon }}</div>
+      <div class="system-text">
+        <div class="system-title">
+          {{ system.name }}
+          <span *ngIf="system.requiresElevatedPermission" class="elevated-badge" title="Requires elevated permissions">🔒</span>
+        </div>
+        <div class="system-desc">{{ system.description }}</div>
+        <div class="system-type-badge" [class]="'badge-' + system.type">
+          {{ system.type === 'desktop' ? 'Desktop App' : 'Web System' }}
+        </div>-
+      </div>
+      <div class="system-status" [class]="'status-' + (system.enabled ? 'active' : 'inactive')">
+        {{ system.enabled ? '●' : '○' }}
+      </div>
+    </button>
+  </div>
+</div>
 
+<!-- No Systems Available Message -->
+<div class="no-systems-message" *ngIf="availableSystems.length === 0">
+  <div class="message-content">
+    <div class="message-icon">🔒</div>
+    <h3>No Systems Available</h3>
+    <p>You don't have permission to access any systems at this time.</p>
+    <p>Contact your administrator if you believe this is an error.</p>
+  </div>
+</div>
 
 <!-- Quick Actions -->
-<div class="quick-actions">
-  <h3>Quick Actions</h3>
-  <div class="actions-grid">
-<button class="action-btn" routerLink="/dms-report/viewing" [queryParams]="{tab: 'metabase'}">
-  <div class="action-icon">📈</div>
-  <div class="action-text">
-    <div class="action-title">MB Reports</div>
-    <div class="action-desc">View Your Reports Quickly</div>
+<div class="quick-actions" *ngIf="availableQuickActions.length > 0">
+  <div class="section-header">
+    <h3>Quick Actions</h3>
+    <div class="action-count">{{ availableQuickActions.length }} action(s) available</div>
   </div>
-</button>
-    
-    <button class="action-btn" routerLink="/audits/action-logs">
-      <div class="action-icon">👤</div>
+  
+  <div class="actions-grid">
+    <button 
+      *ngFor="let action of availableQuickActions; trackBy: trackByActionId"
+      class="action-btn"
+      [style.--action-color]="action.color"
+      [routerLink]="action.route"
+      [queryParams]="action.queryParams"
+      [title]="action.description"
+    >
+      <div class="action-icon">{{ action.icon }}</div>
       <div class="action-text">
-        <div class="action-title">Action Logs</div>
-        <div class="action-desc">Watch What Happend !!</div>
+        <div class="action-title">{{ action.title }}</div>
+       <div class="action-desc">{{ action.description }}</div>
       </div>
     </button>
-    
-    <button class="action-btn" routerLink="/audits/activity-logs">
-      <div class="action-icon">👤</div>
-      <div class="action-text">
-        <div class="action-title">Activity Logs</div>
-        <div class="action-desc">Know More About Users</div>
-      </div>
-    </button>
+  </div>
+</div>
+
+<!-- No Quick Actions Available Message -->
+<div class="no-actions-message" *ngIf="availableQuickActions.length === 0">
+  <div class="message-content">
+    <div class="message-icon">⚡</div>
+    <h3>No Quick Actions Available</h3>
+    <p>You don't have permission to access any quick actions at this time.</p>
+  </div>
+</div>
+
+<!-- User Info Debug Panel (Remove in production) -->
+<div class="debug-panel" *ngIf="false"> <!-- Set to true for debugging -->
+  <h4>Debug: User Permissions</h4>
+  <div class="debug-info">
+    <p><strong>User:</strong> {{ authService.getUserName() }}</p>
+    <p><strong>Roles:</strong> {{ authService.getUserRoles().join(', ') || 'None' }}</p>
+    <p><strong>Permissions:</strong> {{ authService.getUserPermissions().join(', ') || 'None' }}</p>
+    <p><strong>Is SuperAdmin:</strong> {{ authService.isSuperAdmin() }}</p>
   </div>
 </div>

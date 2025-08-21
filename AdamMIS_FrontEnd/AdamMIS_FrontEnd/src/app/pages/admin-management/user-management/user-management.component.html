@@ -49,7 +49,7 @@
   <table class="users-table">
     <thead>
       <tr>
-        <th>Username</th>
+        <th>User</th>
         <th>Department</th>
         <th>Title</th>
         <th>Status</th>
@@ -68,12 +68,8 @@
             <span class="user-id">ID: {{ user.id }}</span>
           </div>
         </td>
-        <td>
-          <span class="department">{{ user.departmentName || 'N/A' }}</span>
-        </td>
-        <td>
-          <span class="title">{{ user.title || 'N/A' }}</span>
-        </td>
+        <td>{{ user.departmentName || 'N/A' }}</td>
+        <td>{{ user.title || 'N/A' }}</td>
         <td>
           <span class="status-badge" [ngClass]="getStatusClass(user)">
             {{ getStatusText(user) }}
@@ -89,22 +85,22 @@
         </td>
         <td class="actions-cell">
           <div class="action-buttons">
-            <!-- Edit Roles Button -->
+            <!-- Combined Edit Roles & Permissions Button -->
             <button 
               class="btn-action btn-edit" 
-              (click)="openRoleModal(user)"
-              title="Edit Roles">
-              Edit Roles
+              (click)="openRolePermissionModal(user)"
+              title="Edit Roles & Permissions">
+              <i class="fas fa-edit"></i>
+              Manage
             </button>
             
             <!-- User Profile Button -->
             <button 
-              class="btn btn-outline-info btn-sm action-btn"
+              class="btn-action btn-profile" 
               [routerLink]="['/admin-management/users', user.id, 'profile']"
-              title="View Profile"
-              matTooltip="View User Profile">
+              title="View Profile">
               <i class="fas fa-user"></i>
-              <span class="btn-text">Profile</span>
+              Profile
             </button>
             
             <!-- Ban/Unban Button -->
@@ -114,6 +110,7 @@
               [class.btn-unban]="user.isDisabled"
               (click)="showBanConfirmation(user)"
               [title]="user.isDisabled ? 'Unban User' : 'Ban User'">
+              <i class="fas" [class.fa-ban]="!user.isDisabled" [class.fa-check]="user.isDisabled"></i>
               {{ user.isDisabled ? 'Unban' : 'Ban' }}
             </button>
           </div>
@@ -133,6 +130,7 @@
 </div>
 
 <!-- Add User Modal -->
+<!-- Add User Modal - Updated with consistent checkbox style -->
 <div *ngIf="showAddUserModal" class="modal-overlay" (click)="closeAddUserModal()">
   <div class="modal-content" (click)="$event.stopPropagation()">
     <div class="modal-header">
@@ -168,20 +166,21 @@
           Password is required (minimum 6 characters)
         </div>
       </div>
-<div class="form-group">
-  <label for="department">Department</label>
-  <select 
-    id="department"
-    formControlName="department"
-    class="form-control">
-    <option value="">Select Department</option>
-    <option *ngFor="let dept of departments" [value]="dept.name">{{ dept.name }}</option>
-  </select>
-  <div *ngIf="addUserForm.get('department')?.invalid && addUserForm.get('department')?.touched" 
-       class="error-message">
-    Department is required
-  </div>
-</div>
+
+      <div class="form-group">
+        <label for="department">Department</label>
+        <select 
+          id="department"
+          formControlName="department"
+          class="form-control">
+          <option value="">Select Department</option>
+          <option *ngFor="let dept of departments" [value]="dept.name">{{ dept.name }}</option>
+        </select>
+        <div *ngIf="addUserForm.get('department')?.invalid && addUserForm.get('department')?.touched" 
+             class="error-message">
+          Department is required
+        </div>
+      </div>
 
       <div class="form-group">
         <label for="title">Title</label>
@@ -191,29 +190,37 @@
           formControlName="title"
           class="form-input"
           placeholder="Enter job title">
-        <div *ngIf="addUserForm.get('title')?.invalid && addUserForm.get('title')?.touched" 
-             class="error-message">
-          Title is required
-        </div>
       </div>
       
-      <div class="form-group">
-        <label>Roles</label>
-        <div class="checkbox-group">
-          <label *ngFor="let role of roles" class="checkbox-label">
+      <!-- Updated Roles Section with card-style checkboxes -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="fas fa-users"></i>
+          <h3>Roles</h3>
+          <p>Select roles to assign to this user</p>
+        </div>
+        
+        <div class="checkbox-grid">
+          <label *ngFor="let role of roles" class="checkbox-card">
             <input 
               type="checkbox" 
               [value]="role.name"
+              [checked]="isRoleSelectedForNewUser(role.name)"
               (change)="onRoleCheckboxChange($event, role.name)">
-            <span class="checkmark"></span>
-            {{ role.name }}
-            <span *ngIf="role.permissionCount" class="role-permission-count">
-              ({{ role.permissionCount }} permissions)
-            </span>
+            <div class="checkbox-content">
+              <div class="checkbox-header">
+                <span class="checkmark"></span>
+                <strong>{{ role.name }}</strong>
+              </div>
+              <div class="checkbox-description">
+                <span class="permission-count">{{ role.permissionCount || 0 }} permissions</span>
+              </div>
+            </div>
           </label>
         </div>
+        
         <div *ngIf="addUserForm.get('roles')?.invalid && addUserForm.get('roles')?.touched" 
-             class="error-message">
+             class="error-message" style="margin-top: 1rem; padding-left: 0;">
           Please select at least one role
         </div>
       </div>
@@ -231,47 +238,137 @@
   </div>
 </div>
 
-<!-- Role Management Modal -->
-<div *ngIf="showRoleModal" class="modal-overlay" (click)="closeRoleModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
+<!-- Combined Role & Permission Management Modal -->
+<div *ngIf="showRolePermissionModal" class="modal-overlay" (click)="closeRolePermissionModal()">
+  <div class="modal-content large-modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2>Manage Roles - {{ selectedUser?.userName }}</h2>
-      <button class="close-btn" (click)="closeRoleModal()">×</button>
+      <h2>Manage Access - {{ selectedUser?.userName }}</h2>
+      <button class="close-btn" (click)="closeRolePermissionModal()">×</button>
     </div>
     
-    <form [formGroup]="roleForm" (ngSubmit)="onSubmitRoles()">
-      <div class="form-group">
-        <label>Assign Roles</label>
-        <div class="checkbox-group">
-          <label *ngFor="let role of roles" class="checkbox-label">
+    <!-- Permission Summary -->
+  <!--  <div *ngIf="selectedUserPermissions" class="permission-summary">
+      <div class="summary-card">
+        <div class="summary-item">
+          <i class="fas fa-users summary-icon"></i>
+          <div>
+            <div class="summary-number">{{ selectedUserPermissions.roleBasedPermissions.length || 0 }}</div>
+            <div class="summary-label">Role Permissions</div>
+          </div>
+        </div>
+        <div class="summary-item">
+          <i class="fas fa-key summary-icon"></i>
+          <div>
+            <div class="summary-number">{{ selectedUserPermissions.individualPermissions.length || 0 }}</div>
+            <div class="summary-label">Individual Permissions</div>
+          </div>
+        </div>
+        <div class="summary-item total">
+          <i class="fas fa-shield-alt summary-icon"></i>
+          <div>
+            <div class="summary-number">{{ selectedUserPermissions.allPermissions.length || 0 }}</div>
+            <div class="summary-label">Total Permissions</div>
+          </div>
+        </div>
+      </div>
+    </div>-->
+    
+    <form [formGroup]="rolePermissionForm" (ngSubmit)="onSubmitRolePermissions()">
+      
+      <!-- Roles Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="fas fa-users"></i>
+          <h3>Roles</h3>
+          <p>Assign roles that grant sets of permissions</p>
+        </div>
+        
+        <div class="checkbox-grid">
+          <label *ngFor="let role of roles" class="checkbox-card">
             <input 
               type="checkbox" 
               [value]="role.id"
-              [checked]="roleForm.value.roleIds?.includes(role.id)"
+              [checked]="rolePermissionForm.value.roleIds?.includes(role.id)"
               (change)="onRoleIdCheckboxChange($event, role.id)">
-            <span class="checkmark"></span>
-            {{ role.name }}
-            <span *ngIf="role.permissionCount" class="role-permission-count">
-              ({{ role.permissionCount }} permissions)
-            </span>
+            <div class="checkbox-content">
+              <div class="checkbox-header">
+                <span class="checkmark"></span>
+                <strong>{{ role.name }}</strong>
+              </div>
+              <div class="checkbox-description">
+                <span class="permission-count">{{ role.permissionCount || 0 }} permissions</span>
+              </div>
+            </div>
           </label>
         </div>
       </div>
       
+      <!-- Individual Permissions Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="fas fa-key"></i>
+          <h3>Individual Permissions</h3>
+          <p>Grant specific permissions independent of roles</p>
+        </div>
+        
+        <div class="permissions-grid">
+          <label *ngFor="let permission of availablePermissions" class="permission-card">
+            <input 
+              type="checkbox" 
+              [value]="permission"
+              [checked]="rolePermissionForm.value.individualPermissions?.includes(permission)"
+              (change)="onIndividualPermissionCheckboxChange($event, permission)">
+            <div class="permission-content">
+              <span class="checkmark"></span>
+              <div class="permission-info">
+                <span class="permission-name">{{ permission }}</span>
+                <div class="permission-badges">
+                  <span *ngIf="isPermissionFromRole(permission)" class="badge badge-role">
+                    <i class="fas fa-users"></i> From Role
+                  </span>
+                </div>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Current Role-Based Permissions (Read-Only) -->
+     <!--<div *ngIf="selectedUserPermissions && selectedUserPermissions.roleBasedPermissions && selectedUserPermissions.roleBasedPermissions.length > 0" 
+           class="form-section readonly-section">
+        <div class="section-header">
+          <i class="fas fa-lock"></i>
+          <h3>Current Role-Based Permissions</h3>
+          <p>These permissions come from assigned roles and cannot be modified here</p>
+        </div>
+        
+        <div class="readonly-permissions">
+          <div *ngFor="let permission of selectedUserPermissions.roleBasedPermissions" 
+               class="readonly-permission">
+            <i class="fas fa-shield-alt"></i>
+            <span>{{ permission }}</span>
+            <span class="badge badge-role">
+              <i class="fas fa-users"></i> Role
+            </span>
+          </div>
+        </div>
+      </div>--> 
+      
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" (click)="closeRoleModal()">
+        <button type="button" class="btn btn-secondary" (click)="closeRolePermissionModal()">
           Cancel
         </button>
-        <button type="submit" class="btn btn-primary" [disabled]="roleForm.invalid || loading">
+        <button type="submit" class="btn btn-primary" [disabled]="loading">
           <span *ngIf="loading" class="btn-spinner"></span>
-          Update Roles
+          <i class="fas fa-save"></i>
+          Update Access
         </button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Confirmation Modal using your new component -->
+<!-- Confirmation Modal -->
 <app-confirmation-modal
   [isVisible]="showConfirmation"
   [title]="confirmationTitle"
@@ -281,6 +378,3 @@
   (confirmed)="onConfirmAction()"
   (cancelled)="onCancelAction()">
 </app-confirmation-modal>
-
-<!-- Toast component for notifications -->
-<app-toast></app-toast>

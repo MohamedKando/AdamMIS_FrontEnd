@@ -62,14 +62,14 @@ export class LogService {
 
   getLogs(
     username?: string,
-    actionType?: string,
+    actionTypes?: string[], // Changed from actionType to actionTypes array
     startDate?: Date | string,
     endDate?: Date | string,
     filters?: RequestFilters
   ): Observable<LogResponse> {
     let params = this.buildQueryParams({
       username,
-      actionType,
+      actionTypes, // Updated parameter name
       startDate,
       endDate,
       filters: filters || { pageNumber: 1, pageSize: 10 }
@@ -88,6 +88,7 @@ export class LogService {
         }))
       );
   }
+
 getActivityLogs(): Observable<ActivityLogs[]> {
   return this.http.get<ActivityLogs[]>(`${this.baseUrl}/activity-logs`)
     .pipe(
@@ -95,6 +96,7 @@ getActivityLogs(): Observable<ActivityLogs[]> {
       catchError(this.handleError<ActivityLogs[]>('getActivityLogs', []))
     );
 }
+
   getUsers(): Observable<string[]> {
     return this.http.get<{ users: string[] } | string[]>(`${this.baseUrl}/users`)
       .pipe(
@@ -115,14 +117,14 @@ getActivityLogs(): Observable<ActivityLogs[]> {
 
   exportLogs(
     username?: string,
-    actionType?: string,
+    actionTypes?: string[], // Updated parameter
     startDate?: Date | string,
     endDate?: Date | string,
     filters?: RequestFilters
   ): Observable<Blob> {
     let params = this.buildQueryParams({
       username,
-      actionType,
+      actionTypes, // Updated parameter name
       startDate,
       endDate,
       filters: filters || { pageNumber: 1, pageSize: 10000 } // Large page size for export
@@ -236,13 +238,26 @@ getActivityLogs(): Observable<ActivityLogs[]> {
   private buildQueryParams(options: any): HttpParams {
     let params = new HttpParams();
     
-    // Handle filter parameters (username, actionType, dates)
+    // Handle filter parameters (username, actionTypes, dates)
     if (options.username && options.username.trim()) {
       params = params.set('username', options.username.trim());
     }
-    if (options.actionType && options.actionType.trim()) {
-      params = params.set('actionType', options.actionType.trim());
+    
+    // Handle multiple action types
+    if (options.actionTypes && Array.isArray(options.actionTypes) && options.actionTypes.length > 0) {
+      // Filter out empty strings and trim values
+      const validActionTypes = options.actionTypes
+        .filter((type: string) => type && type.trim())
+        .map((type: string) => type.trim());
+      
+      if (validActionTypes.length > 0) {
+        // Add each action type as a separate parameter
+        validActionTypes.forEach((actionType: string) => {
+          params = params.append('actionTypes', actionType);
+        });
+      }
     }
+    
     if (options.startDate) {
       const startDate = options.startDate instanceof Date ? options.startDate : new Date(options.startDate);
       params = params.set('startDate', startDate.toISOString());

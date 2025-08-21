@@ -1,16 +1,18 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators'; // Add this import
+import { map } from 'rxjs/operators';
+
 // ========== INTERFACES ========== //
 
 export interface CreateUserRequest {
   userName: string;
   password: string;
-  departmentName: string;  // Changed from department
+  departmentName: string;
   title: string;
   roles: string[];
 }
+
 export interface UserResponse {
   id: string;
   userName: string;
@@ -38,6 +40,20 @@ export interface UserRoleResponse {
   roles: string[];
 }
 
+// New interfaces for individual permissions
+export interface UserPermissionResponse {
+  userId: string;
+  userName: string;
+  individualPermissions: string[];
+  roleBasedPermissions: string[];
+  allPermissions: string[];
+}
+
+export interface UserPermissionRequest {
+  userId: string;
+  permissions: string[];
+}
+
 export interface ApiResult<T> {
   isSuccess: boolean;
   value: T;
@@ -46,13 +62,15 @@ export interface ApiResult<T> {
     description: string;
   };
 }
+
 export interface UpdateUserProfileRequest {
   userName?: string;
   title?: string;
   department?: string;
   internalPhone?: string;
-  userPhone?: string; // Note: Your backend DTO has "USerPhone" with capital S, you might want to fix that
+  userPhone?: string;
 }
+
 export interface UserChangePasswordRequest {
   oldPassword: string;
   newPassword: string;
@@ -73,7 +91,7 @@ export interface RolesResponse {
   id: string;
   name: string;
   isDeleted: boolean;
-  permissionCount?: number; // Add this optional field
+  permissionCount?: number;
 }
 
 export interface DepartmentResponse {
@@ -87,12 +105,11 @@ export interface DepartmentResponse {
   providedIn: 'root'
 })
 export class UserService {
-  private baseUrl = 'http://192.168.1.203:8080/api/User';
-  private baseRoleUrl = 'http://192.168.1.203:8080/api';
+  private LocalbaseUrl = 'http://192.168.1.203:8080/api/User';
+  private LocalbaseRoleUrl = 'http://192.168.1.203:8080/api';
 
-
-  private LocalbaseUrl = 'https://localhost:7209/api/User';
-  private LocalbaseRoleUrl = 'https://localhost:7209/api';
+  private baseUrl = 'https://localhost:7209/api/User';
+  private baseRoleUrl = 'https://localhost:7209/api';
 
   constructor(private http: HttpClient) {}
 
@@ -127,7 +144,6 @@ export class UserService {
   }
 
   getAllRoles(): Observable<RolesResponse[]> {
-    // Always fetch roles without including disabled ones
     return this.http.get<RolesResponse[]>(`${this.baseRoleUrl}/Roles`);
   }
 
@@ -147,37 +163,49 @@ export class UserService {
     return this.http.post<void>(`${this.baseUrl}/reset-password`, request);
   }
 
-  // Add this if you create the departments endpoint
   getDepartments(): Observable<DepartmentResponse[]> {
     return this.http.get<DepartmentResponse[]>(`${this.baseUrl}/departments`);
   }
+
   getDepartmentUsers(departmentId: number): Observable<UserResponse[]> {
-  return this.http.get<UserResponse[]>(`${this.baseUrl}/department-users/${departmentId}`);
-}
+    return this.http.get<UserResponse[]>(`${this.baseUrl}/department-users/${departmentId}`);
+  }
 
   /** POST upload user photo */
-uploadUserPhoto(userId: string, photo: File): Observable<string> {
-  const formData = new FormData();
-  formData.append('userId', userId);
-  formData.append('photo', photo);
-  
-  // Return the Observable with proper mapping
-  return this.http.post<{photoPath: string}>(`${this.baseUrl}/UploadPhoto`, formData)
-    .pipe(
-      map(response => response.photoPath)
-    );
-}
+  uploadUserPhoto(userId: string, photo: File): Observable<string> {
+    const formData = new FormData();
+    formData.append('userId', userId);
+    formData.append('photo', photo);
+    
+    return this.http.post<{photoPath: string}>(`${this.baseUrl}/UploadPhoto`, formData)
+      .pipe(
+        map(response => response.photoPath)
+      );
+  }
 
   /** Helper method to get full photo URL */
-/** Helper method to get full photo URL */
-/** Helper method to get full photo URL */
-getPhotoUrl(photoPath: string | undefined | null): string {
-  if (!photoPath) {
-    return 'assets/images/AdamLogo.png'; // Default avatar path
+  getPhotoUrl(photoPath: string | undefined | null): string {
+    if (!photoPath) {
+      return 'assets/images/AdamLogo.png';
+    }
+    const cleanPath = photoPath.startsWith('/') ? photoPath.substring(1) : photoPath;
+    return `http://192.168.1.203:8080/user-photos/${cleanPath}`;
   }
-  // Remove leading slash if present and construct full URL
-  const cleanPath = photoPath.startsWith('/') ? photoPath.substring(1) : photoPath;
-  return `http://192.168.1.203:8080/user-photos/${cleanPath}`;
-}
-  
+
+  // ========== NEW PERMISSION METHODS ========== //
+
+  /** GET user permissions (individual + role-based) */
+  getUserPermissions(userId: string): Observable<UserPermissionResponse> {
+    return this.http.get<UserPermissionResponse>(`${this.baseUrl}/user-permissions/${userId}`);
+  }
+
+  /** PUT update user individual permissions */
+  updateUserPermissions(request: UserPermissionRequest): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/update-permissions`, request);
+  }
+
+  /** GET all available individual permissions */
+  getIndividualPermissions(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.baseUrl}/Indevedual-permissions`);
+  }
 }
