@@ -1,0 +1,178 @@
+<!-- tickets-glpi.component.html -->
+<div class="tickets-container">
+  <!-- Header -->
+  <div class="header-section">
+    <h2 class="page-title">
+      <i class="fas fa-headset"></i>
+      Support Tickets
+    </h2>
+    <p class="page-subtitle">Submit your request and we'll get right on it</p>
+  </div>
+
+  <!-- Success Message -->
+  <div class="success-alert" *ngIf="showSuccessMessage">
+    <div class="alert alert-success">
+      <i class="fas fa-check-circle"></i>
+      <div class="alert-content">
+        <h4>Ticket Created Successfully!</h4>
+        <p>Your ticket has been created with ID: <strong>#{{createdTicketId}}</strong></p>
+        <p>You'll receive updates via email about this ticket.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Ticket Card -->
+  <div class="main-card">
+    <div class="card-header">
+      <h3>
+        <i class="fas fa-plus-circle"></i>
+        Create New Ticket
+      </h3>
+      <p class="header-subtitle">Tell us what you need help with</p>
+    </div>
+    
+    <div class="card-content">
+      <form [formGroup]="createTicketForm" (ngSubmit)="onCreateTicket()" novalidate>
+        
+        <!-- Title Field -->
+        <div class="form-group">
+          <label for="title" class="form-label">
+            <i class="fas fa-edit"></i>
+            What's the issue? <span class="required">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="title"
+            formControlName="title"
+            class="form-control"
+            [class.is-invalid]="isFieldInvalid('title')"
+            placeholder="Brief description of your problem or request..."
+            maxlength="200">
+          <div class="invalid-feedback" *ngIf="isFieldInvalid('title')">
+            {{getFieldError('title')}}
+          </div>
+          <small class="form-help">Keep it short and clear</small>
+        </div>
+
+        <!-- Description Field -->
+        <div class="form-group">
+          <label for="description" class="form-label">
+            <i class="fas fa-align-left"></i>
+            Tell us more <span class="required">*</span>
+          </label>
+          <textarea 
+            id="description"
+            formControlName="description"
+            class="form-control"
+            [class.is-invalid]="isFieldInvalid('description')"
+            rows="4"
+            placeholder="What were you trying to do? What happened? Any error messages?"></textarea>
+          <div class="invalid-feedback" *ngIf="isFieldInvalid('description')">
+            {{getFieldError('description')}}
+          </div>
+          <small class="form-help">The more details, the faster we can help</small>
+        </div>
+
+        <!-- Priority and Type Row -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="priority" class="form-label">
+              <i class="fas fa-exclamation-triangle"></i>
+              How urgent?
+            </label>
+            <select id="priority" formControlName="priority" class="form-control">
+              <option *ngFor="let option of priorityOptions" [value]="option.value">
+                {{option.label}}
+              </option>
+            </select>
+            <small class="form-help">How important is this to your work?</small>
+          </div>
+
+          <div class="form-group">
+            <label for="type" class="form-label">
+              <i class="fas fa-tag"></i>
+              What type?
+            </label>
+            <select id="type" formControlName="type" class="form-control">
+              <option *ngFor="let option of typeOptions" [value]="option.value">
+                {{option.label}}
+              </option>
+            </select>
+            <small class="form-help">Is something broken or do you need something new?</small>
+          </div>
+        </div>
+
+        <!-- Urgency and Time Row -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="urgency" class="form-label">
+              <i class="fas fa-clock"></i>
+              How quickly?
+            </label>
+            <select id="urgency" formControlName="urgency" class="form-control">
+              <option *ngFor="let option of urgencyOptions" [value]="option.value">
+                {{option.label}}
+              </option>
+            </select>
+            <small class="form-help">When do you need this resolved?</small>
+          </div>
+
+          <div class="form-group">
+            <label for="timeToResolve" class="form-label">
+              <i class="fas fa-hourglass-half"></i>
+              Expected time (hours)
+            </label>
+            <input 
+              type="number" 
+              id="timeToResolve"
+              formControlName="timeToResolve"
+              class="form-control"
+              min="1"
+              max="720"
+              placeholder="e.g., 24">
+            <small class="form-help">Optional: deadline in hours</small>
+          </div>
+        </div>
+
+        <!-- Optional Assignment -->
+        <div class="form-group">
+          <label for="assignedToName" class="form-label">
+            <i class="fas fa-user-cog"></i>
+            Preferred technician (optional)
+          </label>
+          <input 
+            type="text" 
+            id="assignedToName"
+            formControlName="assignedToName"
+            class="form-control"
+            placeholder="Enter name if you have a preference">
+          <small class="form-help">Leave blank for automatic assignment</small>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button 
+            type="submit" 
+            class="btn btn-primary"
+            [disabled]="createTicketForm.invalid || isCreatingTicket">
+            <i class="fas fa-spinner fa-spin" *ngIf="isCreatingTicket"></i>
+            <i class="fas fa-paper-plane" *ngIf="!isCreatingTicket"></i>
+            <span>{{isCreatingTicket ? 'Creating...' : 'Submit Ticket'}}</span>
+          </button>
+          
+          <button 
+            type="button" 
+            class="btn btn-secondary"
+            (click)="resetForm()"
+            [disabled]="isCreatingTicket">
+            <i class="fas fa-undo"></i>
+            <span>Reset</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Quick Help Section -->
+  

@@ -26,7 +26,32 @@
 
         <!-- Right side - Enhanced navigation -->
         <nav class="top-navigation">
-            <!-- User Menu Dropdown - Welcome section as clickable button -->
+            <!-- Chat Notification - ADD THIS SECTION -->
+            <div class="chat-menu" #chatMenuRef>
+                <button 
+                    class="chat-notification-button" 
+                    (click)="toggleChatMenu()"
+                    [class.active]="showChatMenu"
+                    [class.has-notifications]="unreadMessageCount > 0"
+                    [title]="'Messages' + (unreadMessageCount > 0 ? ' (' + unreadMessageCount + ' unread)' : '')">
+                    
+                    <i class="fas fa-comments"></i>
+                    <span class="notification-badge" *ngIf="unreadMessageCount > 0">
+                        {{ unreadMessageCount > 99 ? '99+' : unreadMessageCount }}
+                    </span>
+                    
+                    <!-- Connection status indicator -->
+                    <div class="connection-status" 
+                         [class.connected]="isConnectedToChat"
+                         [class.disconnected]="!isConnectedToChat">
+                    </div>
+                </button>
+                
+                <!-- Chat Dropdown Menu -->
+               
+            </div>
+
+            <!-- User Menu Dropdown - Keep existing -->
             <div class="user-menu" #userMenuRef>
                 <button 
                     class="welcome-section-button" 

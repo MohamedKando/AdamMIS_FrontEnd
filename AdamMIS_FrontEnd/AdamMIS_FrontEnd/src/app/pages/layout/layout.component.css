@@ -160,7 +160,83 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 2rem;
+  gap: 1rem;
+}
+
+/* Chat Notification Button (Simplified for navigation only) */
+.chat-menu {
+  position: relative;
+  margin-right: 1rem;
+}
+
+.chat-notification-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0.75rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  position: relative;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 50px;
+  height: 50px;
+}
+
+.chat-notification-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.chat-notification-button i {
+  font-size: 1.2rem;
+}
+
+/* Notification Badge (if you still want to show unread count) */
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: linear-gradient(45deg, #ff4757, #ff3838);
+  color: white;
+  border-radius: 12px;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 6px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
+}
+
+/* Connection Status Indicator (if you still want to show connection status) */
+.connection-status {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  transition: all 0.3s ease;
+}
+
+.connection-status.connected {
+  background-color: #2ed573;
+  box-shadow: 0 0 6px rgba(46, 213, 115, 0.5);
+}
+
+.connection-status.disconnected {
+  background-color: #ff4757;
+  box-shadow: 0 0 6px rgba(255, 71, 87, 0.5);
 }
 
 /* Enhanced User Menu */
@@ -597,11 +673,25 @@ body {
   .sidebar.collapsed.hover-expanded {
     width: 70px;
   }
+  
+  .chat-notification-button {
+    width: 44px;
+    height: 44px;
+    padding: 0.6rem;
+  }
+  
+  .chat-menu {
+    margin-right: 0.5rem;
+  }
 }
 
 @media (max-width: 480px) {
   .welcome-section .welcome-text {
     display: none;
+  }
+  
+  .chat-menu {
+    margin-right: 0.5rem;
   }
 }
 

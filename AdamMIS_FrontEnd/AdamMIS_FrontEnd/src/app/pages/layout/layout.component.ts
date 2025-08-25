@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 import { NotificationService } from '../../Notfications/notification.service';
+import { ChatService } from '../../services/chat.service'; // Add this import
+import { Subscription } from 'rxjs'; // Add this import
 
 interface SubmenuItem {
   label: string;
@@ -29,9 +31,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
   
   @ViewChild('userMenuRef', { static: false }) userMenuRef!: ElementRef;
 
+
   // Navigation state
   isNavCollapsed = false;
-  isHoverExpanded = false; // New property for hover state
+  isHoverExpanded = false;
   
   // User menu state
   showUserMenu = false;
@@ -40,10 +43,17 @@ export class LayoutComponent implements OnInit, OnDestroy {
   currentUserPhoto = '';
   isAdmin = false;
   
+  // Chat state - Add these properties
+  showChatMenu = false;
+  unreadMessageCount = 0;
+  isConnectedToChat = false;
+  recentConversations: any[] = [];
+  
   // Confirmation modal state for logout
   showLogoutConfirmation = false;
   
   private photoCheckInterval: any;
+  private chatSubscriptions: Subscription[] = []; // Add this
   
   // Track which menu items are expanded
   expandedMenus: { [key: string]: boolean } = {
@@ -125,14 +135,18 @@ export class LayoutComponent implements OnInit, OnDestroy {
     private router: Router, 
     private authService: AuthService,
     private userService: UserService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private chatService: ChatService // Add this
   ) {}
 
   ngOnInit(): void {
     this.loadUserInfo();
+    this.initializeChatService(); // Add this
+    
     console.log('User permissions:', this.authService.getUserPermissions());
-console.log('Has View MRM permission:', this.hasPermission(['View MRM']));
-console.log('Has View MRM permission (single):', this.hasPermission('View MRM'));
+    console.log('Has View MRM permission:', this.hasPermission(['View MRM']));
+    console.log('Has View MRM permission (single):', this.hasPermission('View MRM'));
+    
     // Listen for route changes and window focus to refresh user info
     this.router.events.subscribe(() => {
       if (this.authService.isLoggedIn()) {
@@ -167,14 +181,98 @@ console.log('Has View MRM permission (single):', this.hasPermission('View MRM'))
     if (this.photoCheckInterval) {
       clearInterval(this.photoCheckInterval);
     }
+    
+    // Clean up chat subscriptions
+    this.chatSubscriptions.forEach(sub => sub.unsubscribe());
+    
+    // Disconnect from chat
+    this.chatService.stopConnection();
   }
 
-  // Close user menu when clicking outside
+  // Add chat initialization method
+  private async initializeChatService(): Promise<void> {
+    try {
+      // Initialize SignalR connection
+      await this.chatService.startConnection();
+      this.isConnectedToChat = true;
+      
+      // Subscribe to conversation updates
+      this.chatSubscriptions.push(
+        this.chatService.conversations$.subscribe(conversations => {
+          this.unreadMessageCount = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+          this.recentConversations = conversations.slice(0, 3); // Show only last 3 conversations
+        })
+      );
+      
+      // Subscribe to connection status
+      this.chatSubscriptions.push(
+        this.chatService.connectionStatus$.subscribe(status => {
+          this.isConnectedToChat = status;
+        })
+      );
+      
+      // Load initial conversations
+      this.loadRecentConversations();
+      
+    } catch (error) {
+      console.error('Failed to initialize chat service:', error);
+      this.isConnectedToChat = false;
+    }
+  }
+
+  // Add method to load recent conversations
+  private loadRecentConversations(): void {
+    this.chatService.getConversations().subscribe({
+      next: (conversations) => {
+        this.chatService.updateConversations(conversations);
+      },
+      error: (error) => {
+        console.error('Error loading conversations:', error);
+      }
+    });
+  }
+
+  // Close menus when clicking outside
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event): void {
     if (this.userMenuRef && !this.userMenuRef.nativeElement.contains(event.target)) {
       this.showUserMenu = false;
     }
+    
+  }
+
+  // Add chat menu methods
+  toggleChatMenu(): void {
+ this.router.navigate(['/chat']);
+  }
+
+  closeChatMenu(): void {
+    this.showChatMenu = false;
+  }
+
+  navigateToChat(userId?: string): void {
+this.router.navigate(['/chat']);
+  }
+
+  // Add method to format conversation time
+  getConversationTime(sentAt: Date): string {
+    const now = new Date();
+    const messageTime = new Date(sentAt);
+    const diffInMinutes = Math.floor((now.getTime() - messageTime.getTime()) / (1000 * 60));
+
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d`;
+  }
+
+  // Add method to get user name (you can enhance this with actual user data)
+  getUserName(userId: string): string {
+    return `User ${userId}`; // You can enhance this with actual user names
   }
 
   // Sidebar hover methods

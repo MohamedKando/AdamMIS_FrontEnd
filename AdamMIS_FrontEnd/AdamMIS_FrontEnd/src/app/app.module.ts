@@ -32,6 +32,9 @@ import { AuditsComponent } from './pages/Audiuts/audits.component';
 import { JsonDisplayComponent } from './Helpers/json-display/json-display.component';
 import { ActivityLogsComponent } from './pages/Audiuts/activity-logs/activity-logs.component';
 import { MetabaseComponent } from './pages/dms-report/metabase/metabase.component';
+import { TicketsGlpiComponent } from './pages/tickets-glpi/tickets-glpi.component';
+import { ChatListComponent } from './pages/chat/chat-list/chat-list.component';
+import { ChatComponent } from './pages/chat/chat/chat.component';
 
 @NgModule({
   declarations: [
@@ -54,7 +57,10 @@ import { MetabaseComponent } from './pages/dms-report/metabase/metabase.componen
     JsonDisplayComponent,
     AuditsComponent,
     ActivityLogsComponent,
-    MetabaseComponent
+    MetabaseComponent,
+    TicketsGlpiComponent,
+    ChatListComponent,
+    ChatComponent
   ],
   imports: [
     BrowserModule,

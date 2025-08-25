@@ -1,0 +1,186 @@
+<div class="chat-list">
+  <!-- Header -->
+  <div class="chat-list-header">
+    <h3>Messages</h3>
+    <div class="header-actions">
+      <button 
+        class="action-btn new-chat-btn" 
+        (click)="toggleUserList()" 
+        title="Start new conversation"
+        type="button">
+        <i class="fas fa-plus"></i>
+      </button>
+      <button 
+        class="action-btn refresh-btn" 
+        (click)="refreshConversations()" 
+        [disabled]="loading" 
+        title="Refresh"
+        type="button">
+        <i class="fas fa-sync-alt" [class.spinning]="loading"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- New Conversation Search Panel -->
+  <div class="new-conversation-panel" *ngIf="showUserList">
+    <div class="search-container">
+      <div class="search-input-container">
+        <i class="fas fa-search search-icon"></i>
+        <input 
+          type="text" 
+          [(ngModel)]="searchQuery" 
+          (input)="onSearchQueryChange()"
+          placeholder="Search users..." 
+          class="search-input"
+          autocomplete="off">
+        <button class="close-search-btn" (click)="toggleUserList()" type="button">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search Results -->
+    <div class="search-results" *ngIf="searchQuery.length >= 2">
+      <!-- Loading State -->
+      <div class="search-loading" *ngIf="searchLoading">
+        <div class="loading-spinner-small"></div>
+        <span>Searching...</span>
+      </div>
+      
+      <!-- Users List -->
+      <div class="user-list" *ngIf="!searchLoading">
+        <div 
+          *ngFor="let user of searchResults; trackBy: trackByUser"
+          class="user-item"
+          (click)="selectNewUser(user)">
+          
+          <div class="user-avatar">
+            <div class="avatar-circle">
+              <img 
+                [src]="getUserPhoto(user)" 
+                [alt]="getUserDisplayName(user)"
+                loading="lazy"
+                >
+            </div>
+          </div>
+          
+          <div class="user-info">
+            <div class="user-name">{{ getUserDisplayName(user) }}</div>
+            <div class="user-details" *ngIf="user.title || user.department">
+              <span *ngIf="user.title">{{ user.title }}</span>
+              <span *ngIf="user.title && user.department"> • </span>
+              <span *ngIf="user.department">{{ user.department }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- No Results -->
+        <div class="no-results" *ngIf="searchResults.length === 0 && !searchLoading">
+          <i class="fas fa-search"></i>
+          <p>No users found</p>
+          <small>Try a different search term</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Hint -->
+    <div class="search-hint" *ngIf="searchQuery.length < 2">
+      <i class="fas fa-info-circle"></i>
+      <p>Type at least 2 characters to search for users</p>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="chat-list-content" *ngIf="!showUserList">
+    <!-- Conversations List -->
+    <div class="conversation-list" *ngIf="!loading && !error">
+      <div 
+        *ngFor="let conversation of conversations; trackBy: trackByConversation" 
+        class="conversation-item"
+        (click)="selectConversation(conversation)"
+        [class.active]="selectedUserId === conversation.user.id"
+        [class.unread]="conversation.unreadCount > 0">
+        
+        <div class="user-avatar">
+          <div class="avatar-circle">
+            <img 
+              [src]="getUserPhoto(conversation.user)" 
+              [alt]="getUserDisplayName(conversation.user)"
+              loading="lazy"
+             >
+          </div>
+          <!-- Online status placeholder for future implementation -->
+          <!-- <div class="online-status" *ngIf="false"></div> -->
+        </div>
+
+        <div class="conversation-info">
+          <div class="conversation-header">
+            <div class="user-name">{{ getUserDisplayName(conversation.user) }}</div>
+            <div class="message-time">{{ getConversationTime(conversation.lastMessage.sentAt) }}</div>
+          </div>
+          
+          <div class="user-subtitle" *ngIf="conversation.user.title || conversation.user.department">
+            <span *ngIf="conversation.user.title">{{ conversation.user.title }}</span>
+            <span *ngIf="conversation.user.title && conversation.user.department"> • </span>
+            <span *ngIf="conversation.user.department">{{ conversation.user.department }}</span>
+          </div>
+          
+          <div class="last-message-container">
+            <div class="last-message" [class.unread-text]="conversation.unreadCount > 0">
+              <span *ngIf="isLastMessageFromCurrentUser(conversation)" class="you-label">You: </span>
+              {{ getTruncatedMessage(conversation.lastMessage.content) }}
+            </div>
+            
+            <div class="message-indicators">
+              <!-- Read indicators for sent messages -->
+              <div class="read-indicator" *ngIf="isLastMessageFromCurrentUser(conversation)">
+                <i class="fas fa-check" *ngIf="!conversation.lastMessage.isRead"></i>
+                <i class="fas fa-check-double" *ngIf="conversation.lastMessage.isRead"></i>
+              </div>
+              <!-- Unread count badge -->
+              <div class="unread-badge" *ngIf="conversation.unreadCount > 0">
+                {{ conversation.unreadCount > 99 ? '99+' : conversation.unreadCount }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- No Conversations State -->
+      <div class="no-conversations" *ngIf="conversations.length === 0">
+        <div class="no-conversations-content">
+          <i class="fas fa-comments"></i>
+          <h4>No conversations yet</h4>
+          <p>Start a new conversation to see it here</p>
+          <button class="start-conversation-btn" (click)="toggleUserList()" type="button">
+            <i class="fas fa-plus"></i>
+            Start Conversation
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="loading">
+      <div class="loading-spinner"></div>
+      <p>Loading conversations...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-state" *ngIf="error">
+      <div class="error-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <p>{{ error }}</p>
+      <div class="error-actions">
+        <button class="retry-btn" (click)="loadConversations()" type="button">
+          <i class="fas fa-redo"></i>
+          Try Again
+        </button>
+        <button class="close-error-btn" (click)="clearError()" type="button">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

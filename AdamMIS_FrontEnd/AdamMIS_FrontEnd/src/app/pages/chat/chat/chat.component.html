@@ -1,0 +1,206 @@
+<div class="chat-container">
+  <!-- Sidebar -->
+  <div class="chat-sidebar">
+    <app-chat-list (userSelected)="onUserSelected($event)"></app-chat-list>
+  </div>
+  
+  <!-- Main Chat Area -->
+  <div class="chat-main">
+    <!-- Chat Window -->
+    <div *ngIf="selectedUser; else noSelection" class="chat-window">
+      <!-- Chat Header -->
+      <div class="chat-header">
+        <div class="recipient-info">
+          <div class="recipient-avatar">
+<img 
+  [src]="getUserPhoto(selectedUser)" 
+  [alt]="getUserDisplayName(selectedUser)"
+  loading="lazy"
+>
+          </div>
+          <div class="recipient-details">
+            <h4>{{ getUserDisplayName(selectedUser) }}</h4>
+            <div class="recipient-subtitle" *ngIf="selectedUser.title || selectedUser.department">
+              <span *ngIf="selectedUser.title">{{ selectedUser.title }}</span>
+              <span *ngIf="selectedUser.title && selectedUser.department"> • </span>
+              <span *ngIf="selectedUser.department">{{ selectedUser.department }}</span>
+            </div>
+           <!-- <div class="connection-status">
+              <i class="fas fa-circle" [class.online]="connectionStatus" [class.offline]="!connectionStatus"></i>
+              <span>{{ connectionStatus ? 'Connected' : 'Connecting...' }}</span>
+            </div>-->
+          </div>
+        </div>
+        
+        <div class="chat-actions">
+          <button class="action-btn" title="More options" type="button">
+            <i class="fas fa-ellipsis-v"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Messages Area -->
+      <div class="chat-messages" #messagesContainer>
+        <!-- Loading Indicator -->
+        <div class="messages-loading" *ngIf="loading">
+          <div class="loading-spinner"></div>
+          <span>Loading messages...</span>
+        </div>
+
+        <!-- Messages Container -->
+        <div class="messages-container" *ngIf="!loading">
+          <!-- Messages -->
+          <ng-container *ngFor="let message of messages; let i = index; trackBy: trackByMessageId">
+            <!-- Date Separator -->
+            <div class="date-separator" *ngIf="shouldShowDateSeparator(message, i > 0 ? messages[i-1] : null)">
+              <span>{{ getMessageDate(message.sentAt) }}</span>
+            </div>
+
+            <!-- Message -->
+            <div class="message" 
+                 [class.message-sent]="isMessageFromCurrentUser(message)"
+                 [class.message-received]="!isMessageFromCurrentUser(message)">
+              
+              <!-- Sender Avatar for Received Messages -->
+              <div class="message-avatar" *ngIf="!isMessageFromCurrentUser(message)">
+<img 
+  [src]="getUserPhoto(selectedUser)" 
+  [alt]="getUserDisplayName(selectedUser)"
+  loading="lazy"
+>
+              </div>
+
+              <!-- Message Bubble -->
+              <div class="message-bubble">
+                <div class="message-content" [innerHTML]="formatMessageContent(message.content)"></div>
+                
+                <div class="message-meta">
+                  <span class="message-time">{{ getMessageTime(message.sentAt) }}</span>
+                  
+                  <!-- Read Indicators for Sent Messages -->
+                  <div class="read-indicators" *ngIf="isMessageFromCurrentUser(message)">
+                    <i class="fas fa-check single-check" *ngIf="!message.isRead"></i>
+                    <i class="fas fa-check-double double-check" *ngIf="message.isRead"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- Empty Conversation State -->
+          <div class="empty-conversation" *ngIf="messages.length === 0">
+            <div class="empty-conversation-content">
+              <div class="recipient-avatar-large">
+                <img 
+                  *ngIf="selectedUser.photoPath" 
+                  [src]="selectedUser.photoPath" 
+                  [alt]="getUserDisplayName(selectedUser)"
+                  loading="lazy">
+                <span *ngIf="!selectedUser.photoPath">
+                  {{ getUserInitials(selectedUser) }}
+                </span>
+              </div>
+              <h3>{{ getUserDisplayName(selectedUser) }}</h3>
+              <p *ngIf="selectedUser.title || selectedUser.department" class="user-info">
+                <span *ngIf="selectedUser.title">{{ selectedUser.title }}</span>
+                <span *ngIf="selectedUser.title && selectedUser.department"> • </span>
+                <span *ngIf="selectedUser.department">{{ selectedUser.department }}</span>
+              </p>
+              <p class="start-conversation-text">
+                Start your conversation with {{ getUserDisplayName(selectedUser) }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Typing Indicator -->
+      <div class="typing-indicator" *ngIf="isUserTyping()">
+        <div class="typing-avatar">
+<img 
+  [src]="getUserPhoto(selectedUser)" 
+  [alt]="getUserDisplayName(selectedUser)"
+  loading="lazy"
+>
+
+        </div>
+        <div class="typing-content">
+          <div class="typing-animation">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message Input -->
+      <div class="chat-input-container">
+        <div class="chat-input">
+          <button class="attachment-btn" (click)="onFileAttachment()" title="Attach file" type="button">
+            <i class="fas fa-paperclip"></i>
+          </button>
+          
+          <div class="input-wrapper">
+            <textarea 
+              [(ngModel)]="newMessage"
+              (keydown)="onKeyDown($event)"
+              (input)="onInput(); autoResizeTextarea($event)"
+              placeholder="Type a message..."
+              rows="1"
+              class="message-input"
+              [disabled]="sendingMessage"
+              maxlength="1000"></textarea>
+          </div>
+          
+          <button class="emoji-btn" (click)="onEmojiPicker()" title="Add emoji" type="button">
+            <i class="fas fa-smile"></i>
+          </button>
+          
+          <button 
+            (click)="sendMessage()" 
+            [disabled]="!canSendMessage()"
+            class="send-button"
+            [class.sending]="sendingMessage"
+            title="Send message"
+            type="button">
+            <i class="fas fa-spinner fa-spin" *ngIf="sendingMessage"></i>
+            <i class="fas fa-paper-plane" *ngIf="!sendingMessage"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- No Chat Selected State -->
+    <ng-template #noSelection>
+      <div class="no-chat-selected">
+        <div class="no-chat-content">
+          <div class="no-chat-icon">
+            <i class="fas fa-comments"></i>
+          </div>
+          <h3>AdamMIS Chat</h3>
+          <p class="welcome-message">
+            Select a conversation from the sidebar to start chatting, or start a new conversation with your colleagues.
+          </p>
+          <div class="feature-list">
+            <div class="feature-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Real-time messaging</span>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Read receipts</span>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Secure communication</span>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-check-circle"></i>
+              <span>File attachments</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+</div>

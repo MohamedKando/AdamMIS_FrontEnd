@@ -17,6 +17,9 @@ import { PermissionGuard } from './guards/permission.guard';
 import { AuditsComponent } from './pages/Audiuts/audits.component';
 import { ActivityLogsComponent } from './pages/Audiuts/activity-logs/activity-logs.component';
 import { MetabaseComponent } from './pages/dms-report/metabase/metabase.component';
+import { TicketsGlpiComponent } from './pages/tickets-glpi/tickets-glpi.component';
+import { ChatComponent } from './pages/chat/chat/chat.component'; // Add this import
+
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -29,6 +32,11 @@ const routes: Routes = [
       {
         path: 'dashboard',
         component: DashboardComponent,
+        canActivate: [AuthGuard]
+      },
+      {
+        path: 'chat', // Add this chat route
+        component: ChatComponent,
         canActivate: [AuthGuard]
       },
       {
@@ -73,7 +81,7 @@ const routes: Routes = [
           {
             path: 'user-management',
             component: UserManagementComponent,
-            //canActivate: [AuthGuard]
+            canActivate: [AuthGuard]
           },
           {
             path: 'role-management',
@@ -128,6 +136,11 @@ const routes: Routes = [
             pathMatch: 'full'
           }
         ]
+      },
+       {
+        path: 'tickets',
+        component: TicketsGlpiComponent,
+        //canActivate: [AuthGuard]
       }
     ]
   },
