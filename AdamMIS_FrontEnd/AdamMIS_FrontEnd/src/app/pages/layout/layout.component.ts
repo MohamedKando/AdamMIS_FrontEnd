@@ -62,74 +62,90 @@ export class LayoutComponent implements OnInit, OnDestroy {
     'admin-management': false
   };
 
-  menuItems: MenuItem[] = [
-    { 
-      label: 'Dashboard', 
-      icon: 'dashboard', 
-      route: '/dashboard' 
-    },
-    { 
-      label: 'DMS Report', 
-      icon: 'report', 
-      route: '/dms-report',
-      hasSubmenu: true,
-      submenuItems: [
-        { 
-          label: 'Crystal Report Management', 
-          route: '/dms-report/management', 
-          permission: 'View Report Manager'
-        },
-        { 
-          label: 'MB Report Management', 
-          route: '/dms-report/metabase', 
-          permission: 'View Report Manager'
-        },
-        { 
-          label: 'Report Viewing', 
-          route: '/dms-report/viewing' 
-        }
-      ]
-    },
-    { 
-      label: 'Admin Management', 
-      icon: 'admin-management', 
-      route: '/admin-management',
-      hasSubmenu: true,
-      permission: ['View Admin Manager'],
-      submenuItems: [
-        { 
-          label: 'User Management', 
-          route: '/admin-management/user-management',
-          permission: 'View Admin Manager' 
-        },
-        { 
-          label: 'Role Management', 
-          route: '/admin-management/role-management',
-          permission: 'View Admin Manager' 
-        }
-      ]
-    },
-    { 
-      label: 'Audits Logs', 
-      icon: 'audit', 
-      route: '/audits',
-      hasSubmenu: true,
-      permission: ['View System Logs',"View Activity Logs"],
-      
-      submenuItems: [
-        { 
-          label: 'Action Logs', 
-          route: '/audits/action-logs', 
-          permission: 'View System Logs'
-        },
-        { 
-          label: 'Activity Logs', 
-          route: '/audits/activity-logs',
-          permission: 'View Activity Logs'
-        }
-      ]
-    }
-  ];
+menuItems: MenuItem[] = [
+  { 
+    label: 'Dashboard', 
+    icon: 'dashboard', 
+    route: '/dashboard' 
+  },
+  { 
+    label: 'DMS Report', 
+    icon: 'report', 
+    route: '/dms-report',
+    hasSubmenu: true,
+    submenuItems: [
+      { 
+        label: 'Crystal Report Management', 
+        route: '/dms-report/management', 
+        permission: 'View Report Manager'
+      },
+      { 
+        label: 'MB Report Management', 
+        route: '/dms-report/metabase', 
+        permission: 'View Report Manager'
+      },
+      { 
+        label: 'Report Viewing', 
+        route: '/dms-report/viewing' 
+      }
+    ]
+  },
+  { 
+    label: 'Employees', 
+    icon: 'people', 
+    route: '/employees',
+    hasSubmenu: true,
+    submenuItems: [
+      { 
+        label: 'Employee List', 
+        route: '/employees' 
+      },
+      { 
+        label: 'Add Employee', 
+        route: '/employees/form' 
+      }
+    ]
+  },
+  { 
+    label: 'Admin Management', 
+    icon: 'admin-management', 
+    route: '/admin-management',
+    hasSubmenu: true,
+    permission: ['View Admin Manager'],
+    submenuItems: [
+      { 
+        label: 'User Management', 
+        route: '/admin-management/user-management',
+        permission: 'View Admin Manager' 
+      },
+      { 
+        label: 'Role Management', 
+        route: '/admin-management/role-management',
+        permission: 'View Admin Manager' 
+      }
+    ]
+  },
+  { 
+    label: 'Audits Logs', 
+    icon: 'audit', 
+    route: '/audits',
+    hasSubmenu: true,
+    permission: ['View System Logs',"View Activity Logs"],
+    
+    submenuItems: [
+      { 
+        label: 'Action Logs', 
+        route: '/audits/action-logs', 
+        permission: 'View System Logs'
+      },
+      { 
+        label: 'Activity Logs', 
+        route: '/audits/activity-logs',
+        permission: 'View Activity Logs'
+      }
+    ]
+  }
+];
   
   constructor(
     private router: Router, 

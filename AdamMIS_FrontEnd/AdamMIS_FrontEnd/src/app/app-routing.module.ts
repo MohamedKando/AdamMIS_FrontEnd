@@ -19,6 +19,9 @@ import { ActivityLogsComponent } from './pages/Audiuts/activity-logs/activity-lo
 import { MetabaseComponent } from './pages/dms-report/metabase/metabase.component';
 import { TicketsGlpiComponent } from './pages/tickets-glpi/tickets-glpi.component';
 import { ChatComponent } from './pages/chat/chat/chat.component'; // Add this import
+import { EmployeeFormComponent } from './pages/employee/employee-form/employee-form.component';
+import {EmployeeListComponent} from './pages/employee/employee-list/employee-list.component';
+
 
 
 const routes: Routes = [
@@ -35,7 +38,7 @@ const routes: Routes = [
         canActivate: [AuthGuard]
       },
       {
-        path: 'chat', // Add this chat route
+        path: 'chat',
         component: ChatComponent,
         canActivate: [AuthGuard]
       },
@@ -49,10 +52,10 @@ const routes: Routes = [
             canActivate: [AuthGuard, PermissionGuard],
             data: { permission: 'View Report Manager' } 
           },
-                    {
+          {
             path: 'metabase',
-           component: MetabaseComponent,
-            canActivate: [AuthGuard,PermissionGuard],
+            component: MetabaseComponent,
+            canActivate: [AuthGuard, PermissionGuard],
             data: { permission: 'View Report Manager' } 
           },
           {
@@ -67,11 +70,31 @@ const routes: Routes = [
           }
         ]
       },
+      // MOVE EMPLOYEE ROUTES HERE - INSIDE LayoutComponent children
+      {
+        path: 'employees',
+        component: EmployeeListComponent,
+        canActivate: [AuthGuard]
+      },
+      {
+        path: 'employees/form',
+        component: EmployeeFormComponent,
+        canActivate: [AuthGuard]
+      },
+      {
+        path: 'employees/form/:id',
+        component: EmployeeFormComponent,
+        canActivate: [AuthGuard]
+      },
+      {
+        path: 'employees/form/:id/:step',
+        component: EmployeeFormComponent,
+        canActivate: [AuthGuard]
+      },
       {
         path: 'admin-management',
         component: AdminManagementComponent,
         canActivate: [AuthGuard, PermissionGuard],
-       // Add appropriate permission
         children: [
           {
             path: '',
@@ -88,7 +111,6 @@ const routes: Routes = [
             component: RoleManagementComponent,
             canActivate: [AuthGuard]
           },
-          // Add profile route inside admin-management for viewing other users
           {
             path: 'users/:id/profile',
             component: UserProfileComponent,
@@ -96,21 +118,14 @@ const routes: Routes = [
           }
         ]
       },
-      // Add profile route for current user
       {
         path: 'profile',
         component: UserProfileComponent,
         canActivate: [AuthGuard]
       },
       {
-        path: '',
-        redirectTo: 'dashboard',
-        pathMatch: 'full'
-      },
-      {
         path: 'action-logs',
         component: LogsComponent,
-        
       },
       {
         path: 'audits',
@@ -122,14 +137,12 @@ const routes: Routes = [
             canActivate: [AuthGuard, PermissionGuard],
             data: { permission: 'View System Logs' } 
           },
-
-         {
+          {
             path: 'activity-logs',
             component: ActivityLogsComponent,
             canActivate: [AuthGuard, PermissionGuard],
             data: { permission: 'View Activity Logs' } 
           },
-
           {
             path: '',
             redirectTo: 'activity-logs',
@@ -137,10 +150,14 @@ const routes: Routes = [
           }
         ]
       },
-       {
+      {
         path: 'tickets',
         component: TicketsGlpiComponent,
-        //canActivate: [AuthGuard]
+      },
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
       }
     ]
   },

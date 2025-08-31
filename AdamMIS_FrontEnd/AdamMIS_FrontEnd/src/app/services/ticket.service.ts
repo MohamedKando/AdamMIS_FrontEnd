@@ -33,8 +33,9 @@ export interface TicketResponse {
   providedIn: 'root'
 })
 export class TicketService {
-  private apiUrl = 'https://localhost:7209/api/Tickets'; // Adjust based on your API base URL
-
+  private LocalapiUrl = 'https://localhost:7209/api/Tickets'; // Adjust based on your API base URL
+  private apiUrl = 'http://192.168.1.203:8080/api/Tickets';
+  
   constructor(private http: HttpClient) { }
 
   private getHeaders(): HttpHeaders {

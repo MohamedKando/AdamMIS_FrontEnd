@@ -35,6 +35,9 @@ import { MetabaseComponent } from './pages/dms-report/metabase/metabase.componen
 import { TicketsGlpiComponent } from './pages/tickets-glpi/tickets-glpi.component';
 import { ChatListComponent } from './pages/chat/chat-list/chat-list.component';
 import { ChatComponent } from './pages/chat/chat/chat.component';
+import { EmployeeFormComponent } from './pages/employee/employee-form/employee-form.component';
+import { EmployeeListComponent } from './pages/employee/employee-list/employee-list.component';
+
 
 @NgModule({
   declarations: [
@@ -60,7 +63,9 @@ import { ChatComponent } from './pages/chat/chat/chat.component';
     MetabaseComponent,
     TicketsGlpiComponent,
     ChatListComponent,
-    ChatComponent
+    ChatComponent,
+    EmployeeFormComponent,
+    EmployeeListComponent
   ],
   imports: [
     BrowserModule,

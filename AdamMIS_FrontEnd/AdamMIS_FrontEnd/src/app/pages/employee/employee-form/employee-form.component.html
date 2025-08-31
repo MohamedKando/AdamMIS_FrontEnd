@@ -1,0 +1,780 @@
+<!-- Loading Overlay -->
+<div *ngIf="isLoading" class="loading-overlay">
+  <div class="spinner-border text-primary" role="status">
+    <span class="sr-only">Loading...</span>
+  </div>
+</div>
+
+<div class="container-fluid px-4">
+  <!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="text-dark mb-0">New Employee Registration</h2>
+    <small class="text-muted">
+      <i class="fas fa-user-tie"></i> 
+      Logged in as: {{ currentUserDisplayInfo }}
+    </small>
+  </div>
+  <div class="d-flex gap-2">
+    <button 
+      class="btn btn-outline-primary" 
+      (click)="onNewEmployeeClick()"
+      [disabled]="!canCreateNewEmployee">
+      <i class="fas fa-plus"></i> New Employee
+    </button>
+    <button class="btn btn-secondary" (click)="onCancelClick()">
+      <i class="fas fa-times"></i> Cancel
+    </button>
+  </div>
+</div>
+  <!-- Workflow Steps Cards -->
+<div class="row mb-4">
+  <div class="col-md-3 mb-3" *ngFor="let step of workflowSteps">
+    <div 
+      class="workflow-card h-100" 
+      [class.active]="step.id === selectedStep"
+      [class.completed]="step.isCompleted"
+      [class.unauthorized]="!step.isAuthorized"
+      [style.cursor]="step.isAuthorized ? 'pointer' : 'not-allowed'"
+      (click)="onStepCardClick(step)">
+      <div class="card-body text-center">
+        <div class="workflow-icon mb-3">
+          <i [class]="step.icon"></i>
+        </div>
+        <h6 class="card-title mb-2">{{ step.title }}</h6>
+        <p class="card-text text-muted small mb-2">{{ step.description }}</p>
+        <div class="workflow-count">
+          <span class="badge badge-primary">{{ step.count }}</span>
+        </div>
+        <div *ngIf="step.isCompleted" class="completed-indicator">
+          <i class="fas fa-check-circle text-success"></i>
+        </div>
+        <div *ngIf="!step.isAuthorized" class="access-denied-indicator">
+          <i class="fas fa-lock text-muted"></i>
+          <small class="text-muted d-block mt-1">Access Denied</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Employees List (when step is selected but no specific employee) -->
+<div *ngIf="!employeeId && employeesList.length > 0" class="row mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-0">Employees in {{ selectedStep }} Step ({{ employeesList.length }})</h5>
+            <small class="text-muted">
+              Click on an employee to view/edit their information
+              <span *ngIf="selectedStep === 'DepartmentHead' && currentUserDepartmentName && 
+                           !currentUserRoles.includes('HR') && !currentUserRoles.includes('IT') && !currentUserRoles.includes('CEO')">
+                - Showing {{ currentUserDepartmentName }} department only
+              </span>
+            </small>
+          </div>
+          <!-- Role indicator for the current step -->
+          <div>
+            <span class="badge badge-info">
+              <i class="fas fa-user-shield"></i> 
+              {{ currentUserDisplayInfo }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- Rest of the table remains the same -->
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Employee #</th>
+                <th>Name (English)</th>
+                <th>Name (Arabic)</th>
+                <th>Department</th>
+                <th>Created Date</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let emp of employeesList" class="cursor-pointer">
+                <td>{{ emp.employeeNumber }}</td>
+                <td>{{ emp.nameEnglish }}</td>
+                <td>{{ emp.nameArabic }}</td>
+                <td>{{ emp.departmentName }}</td>
+                <td>{{ emp.createdAt | date:'short' }}</td>
+                <td>
+                  <span class="badge" 
+                        [class.badge-warning]="emp.status === 'InProgress'" 
+                        [class.badge-secondary]="emp.status === 'Draft'"
+                        [class.badge-success]="emp.status === 'Approved'">
+                    {{ emp.status }}
+                  </span>
+                </td>
+                <td>
+                  <button 
+                    class="btn btn-sm btn-primary" 
+                    (click)="onEmployeeClick(emp)"
+                    [disabled]="!canEditEmployeeStep(emp, selectedStep)">
+                    <i class="fas fa-edit"></i> 
+                    {{ canEditEmployeeStep(emp, selectedStep) ? 'Edit' : 'View' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <!-- Form Content (when specific employee is selected or new employee) -->
+  <div *ngIf="employeeId || (!employeeId && selectedStep === 'HR' && currentUserRole === 'HR')" class="row">
+    <div class="col-12">
+      
+      <!-- HR Step Form -->
+      <div *ngIf="canShowStep('HR')" class="card mb-4" [class.border-primary]="currentStep === 'HR'">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-user-plus me-2 text-primary"></i>
+            <h5 class="mb-0">Step 1: HR Information</h5>
+            <span *ngIf="employee?.hrCompletedAt" class="badge badge-success ms-2">
+              <i class="fas fa-check"></i> Completed {{ employee?.hrCompletedAt | date:'short' }}
+            </span>
+            <span *ngIf="currentStep === 'HR'" class="badge badge-info ms-2">
+              <i class="fas fa-clock"></i> Current Step
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="hrForm" class="row g-3">
+            <!-- Employee Number -->
+            <div class="col-md-6">
+              <label class="form-label required">Employee Number</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="employeeNumber"
+                [class.is-invalid]="isFieldInvalid(hrForm, 'employeeNumber')"
+                [readonly]="isFormReadonly || (currentStep !== 'HR' && !!employeeId)">
+              <div *ngIf="isFieldInvalid(hrForm, 'employeeNumber')" class="invalid-feedback">
+                {{ getFieldError(hrForm, 'employeeNumber') }}
+              </div>
+            </div>
+
+            <!-- Payroll Number -->
+            <div class="col-md-6">
+              <label class="form-label">Payroll Number</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="payrollNumber"
+                [readonly]="isFormReadonly || (currentStep !== 'HR' && employeeId)">
+            </div>
+
+            <!-- Name Arabic -->
+            <div class="col-md-6">
+              <label class="form-label required">Name (Arabic)</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="nameArabic"
+                [class.is-invalid]="isFieldInvalid(hrForm, 'nameArabic')"
+                [readonly]="isFormReadonly || (currentStep !== 'HR' && employeeId)">
+              <div *ngIf="isFieldInvalid(hrForm, 'nameArabic')" class="invalid-feedback">
+                {{ getFieldError(hrForm, 'nameArabic') }}
+              </div>
+            </div>
+
+            <!-- Name English -->
+            <div class="col-md-6">
+              <label class="form-label required">Name (English)</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="nameEnglish"
+                [class.is-invalid]="isFieldInvalid(hrForm, 'nameEnglish')"
+                [readonly]="isFormReadonly || (currentStep !== 'HR' && employeeId)">
+              <div *ngIf="isFieldInvalid(hrForm, 'nameEnglish')" class="invalid-feedback">
+                {{ getFieldError(hrForm, 'nameEnglish') }}
+              </div>
+            </div>
+
+            <!-- Personal Email -->
+            <div class="col-md-6">
+              <label class="form-label required">Personal Email</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                formControlName="personalEmail"
+                [class.is-invalid]="isFieldInvalid(hrForm, 'personalEmail')"
+                [readonly]="isFormReadonly || (currentStep !== 'HR' && employeeId)">
+              <div *ngIf="isFieldInvalid(hrForm, 'personalEmail')" class="invalid-feedback">
+                {{ getFieldError(hrForm, 'personalEmail') }}
+              </div>
+            </div>
+
+            <!-- Contact Phone -->
+            <div class="col-md-6">
+              <label class="form-label">Contact Phone</label>
+              <input 
+                type="tel" 
+                class="form-control" 
+                formControlName="contactPhone"
+                [readonly]="isFormReadonly || (currentStep !== 'HR' && employeeId)">
+            </div>
+
+            <!-- Department -->
+            <div class="col-md-6">
+              <label class="form-label required">Department</label>
+              <select 
+                class="form-select" 
+                formControlName="departmentId"
+                [class.is-invalid]="isFieldInvalid(hrForm, 'departmentId')"
+                [disabled]="isFormReadonly || (currentStep !== 'HR' && !!employeeId)">
+                <option value="0">Select Department</option>
+                <option *ngFor="let dept of departments" [value]="dept.id">{{ dept.name }}</option>
+              </select>
+              <div *ngIf="isFieldInvalid(hrForm, 'departmentId')" class="invalid-feedback">
+                {{ getFieldError(hrForm, 'departmentId') }}
+              </div>
+            </div>
+
+            <!-- Medical Employee -->
+            <div class="col-md-6">
+              <label class="form-label">Medical Employee</label>
+              <div class="form-check form-switch">
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  formControlName="isMedical"
+                  id="medicalEmployee"
+                  [disabled]="isFormReadonly || (currentStep !== 'HR' && !!employeeId)">
+                <label class="form-check-label" for="medicalEmployee">
+                  Check if this is a medical employee
+                </label>
+              </div>
+            </div>
+          </form>
+
+          <!-- HR Actions -->
+          <div class="mt-4">
+            <!-- Actions for existing employee -->
+            <div *ngIf="employeeId && currentStep === 'HR' && canEditCurrentStep" class="d-flex gap-2">
+              <button 
+                type="button" 
+                class="btn btn-success" 
+                (click)="onSaveHR()"
+                [disabled]="isLoading">
+                <i class="fas fa-save"></i> Save Changes
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-primary" 
+                (click)="onCompleteHR()"
+                [disabled]="isLoading || hrForm.invalid">
+                <i class="fas fa-check"></i> Complete HR Step
+              </button>
+            </div>
+            
+            <!-- Actions for new employee -->
+            <div *ngIf="!employeeId && currentUserRole === 'HR'" class="d-flex gap-2">
+              <button 
+                type="button" 
+                class="btn btn-success" 
+                (click)="onSaveHR()"
+                [disabled]="isLoading || hrForm.invalid">
+                <i class="fas fa-user-plus"></i> Create Employee
+              </button>
+            </div>
+            
+            <!-- Read-only state message -->
+            <div *ngIf="isFormReadonly || (currentStep !== 'HR' && employeeId)" class="alert alert-info">
+              <i class="fas fa-info-circle"></i> 
+              This section is read-only. {{ currentUserRole !== 'HR' ? 'Only HR can edit this information.' : 'You can only edit when the employee is in the HR step.' }}
+            </div>
+
+            <!-- Unauthorized message -->
+<div *ngIf="!employeeId && selectedStep !== 'HR' && !isAuthorizedForStep(selectedStep)" class="text-center py-5">
+  <div class="unauthorized-state">
+    <i class="fas fa-lock fa-4x text-warning mb-3"></i>
+    <h5 class="text-warning">Access Denied</h5>
+    <p class="text-muted mb-2">You are not authorized to view the {{ selectedStep }} workflow step.</p>
+    <p class="text-muted mb-4">
+      Your current role(s): <strong>{{ currentUserRoles.join(', ') }}</strong>
+      <span *ngIf="currentUserDepartmentName"> ({{ currentUserDepartmentName }})</span>
+    </p>
+    <button class="btn btn-primary" (click)="onCancelClick()">
+      <i class="fas fa-home"></i> Go to My Workflow
+    </button>
+  </div>
+</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Department Head Step Form -->
+      <div *ngIf="canShowStep('DepartmentHead')" class="card mb-4" [class.border-primary]="currentStep === 'DepartmentHead'">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-building me-2 text-primary"></i>
+            <h5 class="mb-0">Step 2: Department Head Information</h5>
+            <span *ngIf="employee?.departmentCompletedAt" class="badge badge-success ms-2">
+              <i class="fas fa-check"></i> Completed {{ employee?.departmentCompletedAt | date:'short' }}
+            </span>
+            <span *ngIf="currentStep === 'DepartmentHead'" class="badge badge-info ms-2">
+              <i class="fas fa-clock"></i> Current Step
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="departmentForm" class="row g-3">
+            
+            <!-- Medical Fields (only if IsMedical = true) -->
+            <div *ngIf="isMedicalEmployee" class="col-12">
+              <h6 class="text-primary mb-3">
+                <i class="fas fa-stethoscope me-2"></i>Medical Information
+              </h6>
+              
+              <div class="row g-3">
+                <!-- Qualification -->
+                <div class="col-md-6">
+                  <label class="form-label">Qualification</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    formControlName="qualification"
+                                          [readonly]="isFormReadonly || (currentStep !== 'DepartmentHead' && !!employeeId)">
+                </div>
+
+                <!-- Specialty -->
+                <div class="col-md-6">
+                  <label class="form-label">Specialty</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    formControlName="specialty"
+                    [readonly]="isFormReadonly || (currentStep !== 'DepartmentHead' && employeeId)">
+                </div>
+
+                <!-- Medical Service Code -->
+                <div class="col-md-6">
+                  <label class="form-label">Medical Service Code</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    formControlName="medicalServiceCode"
+                    [readonly]="isFormReadonly || (currentStep !== 'DepartmentHead' && employeeId)">
+                </div>
+
+                <!-- Doctor Status -->
+                <div class="col-md-6">
+                  <label class="form-label">Doctor Status</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    formControlName="doctorStatus"
+                    [readonly]="isFormReadonly || (currentStep !== 'DepartmentHead' && employeeId)">
+                </div>
+
+                <!-- Senior Doctor Name -->
+                <div class="col-md-6">
+                  <label class="form-label">Senior Doctor Name</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    formControlName="seniorDoctorName"
+                    [readonly]="isFormReadonly || (currentStep !== 'DepartmentHead' && employeeId)">
+                </div>
+
+                <!-- Medical Profile Type -->
+                <div class="col-md-6">
+                  <label class="form-label">Medical Profile Type</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    formControlName="medicalProfileType"
+                    [readonly]="isFormReadonly || (currentStep !== 'DepartmentHead' && employeeId)">
+                </div>
+              </div>
+            </div>
+
+            <!-- Non-medical message -->
+            <div *ngIf="!isMedicalEmployee" class="col-12">
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                Medical fields are hidden because this employee is not marked as medical staff.
+              </div>
+            </div>
+
+            <!-- System Permissions -->
+            <div class="col-12">
+              <h6 class="text-primary mb-3">
+                <i class="fas fa-key me-2"></i>System Permissions
+              </h6>
+              <div class="col-12">
+                <label class="form-label required">System Permissions</label>
+                <textarea 
+                  class="form-control" 
+                  formControlName="systemPermissions"
+                  rows="4"
+                  placeholder="Define system permissions and access levels..."
+                  [class.is-invalid]="isFieldInvalid(departmentForm, 'systemPermissions')"
+                  [readonly]="isFormReadonly || (currentStep !== 'DepartmentHead' && employeeId)">
+                </textarea>
+                <div *ngIf="isFieldInvalid(departmentForm, 'systemPermissions')" class="invalid-feedback">
+                  {{ getFieldError(departmentForm, 'systemPermissions') }}
+                </div>
+                <small class="form-text text-muted">
+                  Specify the systems, applications, and permission levels this employee should have access to.
+                </small>
+              </div>
+            </div>
+          </form>
+
+          <!-- Department Actions -->
+          <div class="mt-4">
+            <div *ngIf="currentStep === 'DepartmentHead' && canEditCurrentStep" class="d-flex gap-2">
+              <button 
+                type="button" 
+                class="btn btn-success" 
+                (click)="onSaveDepartment()"
+                [disabled]="isLoading">
+                <i class="fas fa-save"></i> Save Department Info
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-primary" 
+                (click)="onCompleteDepartment()"
+                [disabled]="isLoading || departmentForm.invalid">
+                <i class="fas fa-check"></i> Complete Department Step
+              </button>
+            </div>
+
+            <!-- Read-only message -->
+            <div *ngIf="isFormReadonly || (currentStep !== 'DepartmentHead' && employeeId)" class="alert alert-info">
+              <i class="fas fa-info-circle"></i> 
+              This section is read-only. {{ currentUserRole !== 'DepartmentHead' ? 'Only Department Heads can edit this information.' : 'You can only edit when the employee is in the Department Head step.' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IT Step Form -->
+      <div *ngIf="canShowStep('IT')" class="card mb-4" [class.border-primary]="currentStep === 'IT'">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-laptop me-2 text-primary"></i>
+            <h5 class="mb-0">Step 3: IT Information</h5>
+            <span *ngIf="employee?.itCompletedAt" class="badge badge-success ms-2">
+              <i class="fas fa-check"></i> Completed {{ employee?.itCompletedAt | date:'short' }}
+            </span>
+            <span *ngIf="currentStep === 'IT'" class="badge badge-info ms-2">
+              <i class="fas fa-clock"></i> Current Step
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="itForm" class="row g-3">
+            
+            <!-- Access Permissions -->
+            <div class="col-12">
+              <h6 class="text-primary mb-3">
+                <i class="fas fa-shield-alt me-2"></i>Access Permissions
+              </h6>
+              
+              <div class="row g-3">
+                <!-- Internet Access -->
+                <div class="col-md-4">
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      formControlName="internetAccess"
+                      id="internetAccess"
+                      [disabled]="isFormReadonly || (currentStep !== 'IT' && !!employeeId)">
+                    <label class="form-check-label" for="internetAccess">
+                      <i class="fas fa-globe me-1"></i> Internet Access
+                    </label>
+                  </div>
+                </div>
+
+                <!-- External Email -->
+                <div class="col-md-4">
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      formControlName="externalEmail"
+                      id="externalEmail"
+                      [disabled]="isFormReadonly || (currentStep !== 'IT' && !!employeeId)">
+                    <label class="form-check-label" for="externalEmail">
+                      <i class="fas fa-envelope me-1"></i> External Email
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Internal Email -->
+                <div class="col-md-4">
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      formControlName="internalEmail"
+                      id="internalEmail"
+                      [disabled]="isFormReadonly || (currentStep !== 'IT' && !!employeeId)">
+                    <label class="form-check-label" for="internalEmail">
+                      <i class="fas fa-envelope-open me-1"></i> Internal Email
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- File Sharing -->
+            <div class="col-md-6">
+              <label class="form-label required">
+                <i class="fas fa-folder-open me-1"></i> Files Sharing
+              </label>
+              <select 
+                class="form-select" 
+                formControlName="filesSharing"
+                [class.is-invalid]="isFieldInvalid(itForm, 'filesSharing')"
+                [disabled]="isFormReadonly || (currentStep !== 'IT' &&  !!employeeId)">
+                <option *ngFor="let option of fileSharingOptions" [value]="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+              <div *ngIf="isFieldInvalid(itForm, 'filesSharing')" class="invalid-feedback">
+                {{ getFieldError(itForm, 'filesSharing') }}
+              </div>
+            </div>
+
+            <!-- Network ID -->
+            <div class="col-md-6">
+              <label class="form-label">
+                <i class="fas fa-network-wired me-1"></i> Network ID
+              </label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="networkId"
+                placeholder="Auto-generated after creation"
+                [readonly]="isFormReadonly || (currentStep !== 'IT' && !!employeeId)">
+            </div>
+
+            <!-- Email ID -->
+            <div class="col-md-6">
+              <label class="form-label">
+                <i class="fas fa-at me-1"></i> Email ID
+              </label>
+              <input 
+                type="email" 
+                class="form-control" 
+                formControlName="emailId"
+                placeholder="Auto-generated based on name"
+                [readonly]="isFormReadonly || (currentStep !== 'IT' && !!employeeId)">
+            </div>
+          </form>
+
+          <!-- IT Actions -->
+          <div class="mt-4">
+            <div *ngIf="currentStep === 'IT' && canEditCurrentStep" class="d-flex gap-2">
+              <button 
+                type="button" 
+                class="btn btn-success" 
+                (click)="onSaveIT()"
+                [disabled]="isLoading">
+                <i class="fas fa-save"></i> Save IT Info
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-primary" 
+                (click)="onCompleteIT()"
+                [disabled]="isLoading || itForm.invalid">
+                <i class="fas fa-check"></i> Complete IT Step
+              </button>
+            </div>
+
+            <!-- Read-only message -->
+            <div *ngIf="isFormReadonly || (currentStep !== 'IT' && employeeId)" class="alert alert-info">
+              <i class="fas fa-info-circle"></i> 
+              This section is read-only. {{ currentUserRole !== 'IT' ? 'Only IT staff can edit this information.' : 'You can only edit when the employee is in the IT step.' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CEO Step Form -->
+      <div *ngIf="canShowStep('CEO')" class="card mb-4" [class.border-primary]="currentStep === 'CEO'">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-crown me-2 text-primary"></i>
+            <h5 class="mb-0">Step 4: CEO Approval</h5>
+            <span *ngIf="employee?.ceoCompletedAt" class="badge badge-success ms-2">
+              <i class="fas fa-check"></i> Completed {{ employee?.ceoCompletedAt | date:'short' }}
+            </span>
+            <span *ngIf="currentStep === 'CEO'" class="badge badge-info ms-2">
+              <i class="fas fa-clock"></i> Current Step
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="ceoForm" class="row g-3">
+            
+            <!-- Employee Summary for CEO Review -->
+            <div *ngIf="employee" class="col-12 mb-4">
+              <h6 class="text-primary mb-3">
+                <i class="fas fa-clipboard-list me-2"></i>Employee Summary for Approval
+              </h6>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="card bg-light">
+                    <div class="card-body">
+                      <h6 class="card-title">Basic Information</h6>
+                      <p class="mb-1"><strong>Employee Number:</strong> {{ employee.employeeNumber }}</p>
+                      <p class="mb-1"><strong>Name:</strong> {{ employee.nameEnglish }} / {{ employee.nameArabic }}</p>
+                      <p class="mb-1"><strong>Email:</strong> {{ employee.personalEmail }}</p>
+                      <p class="mb-0"><strong>Department:</strong> {{ employee.departmentName }}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="card bg-light">
+                    <div class="card-body">
+                      <h6 class="card-title">Access & Permissions</h6>
+                      <p class="mb-1"><strong>Medical Employee:</strong> 
+                        <span class="badge" [class.badge-success]="employee.isMedical" [class.badge-secondary]="!employee.isMedical">
+                          {{ employee.isMedical ? 'Yes' : 'No' }}
+                        </span>
+                      </p>
+                      <p class="mb-1"><strong>Internet Access:</strong> 
+                        <span class="badge" [class.badge-success]="employee.internetAccess" [class.badge-secondary]="!employee.internetAccess">
+                          {{ employee.internetAccess ? 'Yes' : 'No' }}
+                        </span>
+                      </p>
+                      <p class="mb-1"><strong>File Sharing:</strong> {{ employee.filesSharing || 'Not set' }}</p>
+                      <p class="mb-0"><strong>System Permissions:</strong> 
+                        <small class="text-muted">{{ employee.systemPermissions || 'Not specified' }}</small>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CEO Signature -->
+            <div class="col-12">
+              <label class="form-label">
+                <i class="fas fa-signature me-1"></i> CEO Signature & Comments
+              </label>
+              <textarea 
+                class="form-control" 
+                formControlName="ceoSignature"
+                rows="3"
+                placeholder="Add your digital signature, approval notes, or any special instructions..."
+                [readonly]="isFormReadonly || (currentStep !== 'CEO' && employeeId)">
+              </textarea>
+              <small class="form-text text-muted">
+                This will serve as your digital signature and approval for this employee registration.
+              </small>
+            </div>
+          </form>
+
+          <!-- CEO Actions -->
+          <div class="mt-4">
+            <div *ngIf="currentStep === 'CEO' && canEditCurrentStep" class="d-flex gap-2">
+              <button 
+                type="button" 
+                class="btn btn-success" 
+                (click)="onSaveCEO()"
+                [disabled]="isLoading">
+                <i class="fas fa-save"></i> Save Signature
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-primary" 
+                (click)="onCompleteCEO()"
+                [disabled]="isLoading">
+                <i class="fas fa-stamp"></i> Final Approval
+              </button>
+            </div>
+
+            <!-- Read-only message -->
+            <div *ngIf="isFormReadonly || (currentStep !== 'CEO' && employeeId)" class="alert alert-info">
+              <i class="fas fa-info-circle"></i> 
+              This section is read-only. {{ currentUserRole !== 'CEO' ? 'Only the CEO can provide final approval.' : 'You can only edit when the employee is in the CEO step.' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Completed Status -->
+      <div *ngIf="employee?.status === 'Approved'" class="card border-success mb-4">
+        <div class="card-header bg-success text-white">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-check-circle me-2"></i>
+            <h5 class="mb-0">Employee Registration Completed Successfully</h5>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-8">
+              <p class="text-success mb-2">
+                <i class="fas fa-trophy"></i> 
+                This employee has been successfully registered and approved through all workflow steps.
+              </p>
+              <p class="mb-0">
+                <small class="text-muted">
+                  <strong>Completed on:</strong> {{ employee?.ceoCompletedAt | date:'full' }}<br>
+                  <strong>Final approval by:</strong> {{ employee?.ceoCompletedBy || 'CEO' }}
+                </small>
+              </p>
+            </div>
+            <div class="col-md-4 text-end">
+              <div class="workflow-completion-badge">
+                <div class="d-flex align-items-center justify-content-end">
+                  <div class="me-3">
+                    <small class="text-muted">All Steps Complete</small>
+                    <div class="progress" style="height: 8px; width: 120px;">
+                      <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+                    </div>
+                  </div>
+                  <div class="text-success">
+                    <i class="fas fa-medal fa-2x"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!employeeId && employeesList.length === 0 && selectedStep !== 'HR'" class="text-center py-5">
+    <div class="empty-state">
+      <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+      <h5 class="text-muted">No employees in {{ selectedStep }} step</h5>
+      <p class="text-muted mb-4">There are currently no employees waiting at this workflow step.</p>
+      <div class="d-flex justify-content-center gap-2">
+        <button class="btn btn-outline-primary" (click)="onStepCardClick(workflowSteps[0])">
+          <i class="fas fa-users"></i> View All Steps
+        </button>
+        <button 
+          *ngIf="currentUserRole === 'HR'" 
+          class="btn btn-primary" 
+          (click)="onNewEmployeeClick()">
+          <i class="fas fa-plus"></i> Add New Employee
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+
+</div>
