@@ -39,7 +39,8 @@ export interface SendMessageDto {
   providedIn: 'root'
 })
 export class ChatService {
-  private baseUrl = 'https://localhost:7209/api';
+  private LocalbaseUrl = 'https://localhost:7209/api';
+  private baseUrl = 'http://192.168.1.203:8080/api';
   private hubConnection: HubConnection | null = null;
   
   // Subjects for real-time updates
