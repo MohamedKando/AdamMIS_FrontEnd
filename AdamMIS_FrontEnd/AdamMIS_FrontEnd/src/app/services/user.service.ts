@@ -13,6 +13,10 @@ export interface CreateUserRequest {
   roles: string[];
 }
 
+export interface DepartmentHeadRequest {
+  userId: string;  // Change from 'id' to 'userId'
+  departmentId: number;
+}
 export interface UserResponse {
   id: string;
   userName: string;
@@ -105,11 +109,11 @@ export interface DepartmentResponse {
   providedIn: 'root'
 })
 export class UserService {
-  private baseUrl = 'http://192.168.1.203:8080/api/User';
-  private baseRoleUrl = 'http://192.168.1.203:8080/api';
+  private  LocalbaseUrl = 'http://192.168.1.203:8080/api/User';
+  private LocalbaseRoleUrl = 'http://192.168.1.203:8080/api';
 
-  private LocalbaseUrl = 'https://localhost:7209/api/User';
-  private LocalbaseRoleUrl = 'https://localhost:7209/api';
+  private baseUrl = 'https://localhost:7209/api/User';
+  private baseRoleUrl = 'https://localhost:7209/api';
 
   constructor(private http: HttpClient) {}
 
@@ -208,4 +212,16 @@ export class UserService {
   getIndividualPermissions(): Observable<string[]> {
     return this.http.get<string[]>(`${this.baseUrl}/Indevedual-permissions`);
   }
+
+  /** POST assign user as department head */
+assignUserAsDepartmentHead(request: DepartmentHeadRequest): Observable<void> {
+  return this.http.post<void>(`${this.baseUrl}/department-users/assigen-head`, request);
+}
+
+/** DELETE remove user as department head */
+removeUserAsDepartmentHead(request: DepartmentHeadRequest): Observable<void> {
+  return this.http.request<void>('delete', `${this.baseUrl}/department-users/remove-head`, { 
+    body: request 
+  });
+}
 }

@@ -93,6 +93,8 @@
               <i class="fas fa-edit"></i>
               Manage
             </button>
+            <!-- Department Head Button -->
+
             
             <!-- User Profile Button -->
             <button 
@@ -331,8 +333,31 @@
             </div>
           </label>
         </div>
+        
       </div>
-      
+      <!-- Department Head Section - Add this after Individual Permissions section -->
+<div class="form-section">
+  <div class="section-header">
+    <i class="fas fa-crown"></i>
+    <h3>Department Head Assignment</h3>
+    <p>Assign this user as head of a department (optional)</p>
+  </div>
+  
+  <div class="form-group">
+    <label for="departmentHeadId">Assign as Head of Department</label>
+    <select 
+      id="departmentHeadId"
+      formControlName="departmentHeadId"
+      class="form-control">
+      <option value="">No department head assignment</option>
+      <option *ngFor="let dept of departments" [value]="dept.id">{{ dept.name }}</option>
+    </select>
+    <div class="form-hint">
+      <i class="fas fa-info-circle"></i>
+      Leave empty to remove any existing department head assignment
+    </div>
+  </div>
+</div>
       <!-- Current Role-Based Permissions (Read-Only) -->
      <!--<div *ngIf="selectedUserPermissions && selectedUserPermissions.roleBasedPermissions && selectedUserPermissions.roleBasedPermissions.length > 0" 
            class="form-section readonly-section">

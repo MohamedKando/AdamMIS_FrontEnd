@@ -8,7 +8,8 @@ import {
   UserRoleRequest,
   DepartmentResponse,
   UserPermissionResponse,
-  UserPermissionRequest
+  UserPermissionRequest,
+  DepartmentHeadRequest
 } from '../../../services/user.service';
 import { NotificationService } from '../../../Notfications/notification.service';
 
@@ -43,7 +44,7 @@ export class UserManagementComponent implements OnInit {
   
   loading = false;
   searchTerm = '';
-
+selectedDepartmentForHead: number | null = null;
   constructor(
     private userService: UserService,
     private fb: FormBuilder,
@@ -58,10 +59,11 @@ export class UserManagementComponent implements OnInit {
     });
 
     // Combined form for roles and individual permissions
-    this.rolePermissionForm = this.fb.group({
-      roleIds: [[], Validators.nullValidator],
-      individualPermissions: [[], Validators.nullValidator]
-    });
+this.rolePermissionForm = this.fb.group({
+  roleIds: [[], Validators.nullValidator],
+  individualPermissions: [[], Validators.nullValidator],
+  departmentHeadId: ['', Validators.nullValidator] // Add this
+});
   }
 
   loadDepartments(): void {
@@ -328,10 +330,11 @@ export class UserManagementComponent implements OnInit {
         }
         
         // Pre-populate the form
-        this.rolePermissionForm.patchValue({
-          roleIds: userRoleIds,
-          individualPermissions: userPermissions.individualPermissions || []
-        });
+  this.rolePermissionForm.patchValue({
+    roleIds: userRoleIds,
+    individualPermissions: userPermissions.individualPermissions || [],
+    departmentHeadId: user.departmentId || '' // Pre-select current department if user is head
+  });
         
         console.log('Pre-selected role IDs:', userRoleIds);
         console.log('Pre-selected individual permissions:', userPermissions.individualPermissions);
@@ -341,7 +344,9 @@ export class UserManagementComponent implements OnInit {
         this.loading = false;
         this.notificationService.showError('Error loading user data.');
       }
+      
     });
+    
   }
 
   closeRolePermissionModal(): void {
@@ -351,71 +356,84 @@ export class UserManagementComponent implements OnInit {
   }
 
   onSubmitRolePermissions(): void {
-    if (this.selectedUser) {
-      const formValue = this.rolePermissionForm.value;
-      const newRoleIds = formValue.roleIds || [];
-      const newIndividualPermissions = formValue.individualPermissions || [];
-      
-      console.log('Updating roles and permissions for user:', this.selectedUser.id);
-      console.log('New role IDs:', newRoleIds);
-      console.log('New individual permissions:', newIndividualPermissions);
+  if (this.selectedUser) {
+    const formValue = this.rolePermissionForm.value;
+    const newRoleIds = formValue.roleIds || [];
+    const newIndividualPermissions = formValue.individualPermissions || [];
+    const selectedDeptHeadId = formValue.departmentHeadId;
 
-      this.loading = true;
+    console.log('Updating roles, permissions, and department head for user:', this.selectedUser.id);
 
-      // Update roles first, then individual permissions
-      const roleRequest: UserRoleRequest = {
-        userId: this.selectedUser.id,
-        roleIds: newRoleIds
-      };
+    this.loading = true;
 
-      this.userService.updateUserRoles(roleRequest).subscribe({
-        next: () => {
-          console.log('User roles updated successfully');
-          
-          // Update individual permissions
-          const permissionRequest: UserPermissionRequest = {
-            userId: this.selectedUser!.id,
-            permissions: newIndividualPermissions
-          };
+    // Update roles first
+    const roleRequest: UserRoleRequest = {
+      userId: this.selectedUser.id,
+      roleIds: newRoleIds
+    };
 
-          this.userService.updateUserPermissions(permissionRequest).subscribe({
-            next: () => {
-              console.log('User permissions updated successfully');
-              
-              // Update the local user data
-              const newRoleNames = newRoleIds.map((id: string) => {
-                const role = this.roles.find(r => r.id === id);
-                return role ? role.name : '';
-              }).filter((name: string) => name !== '');
+    this.userService.updateUserRoles(roleRequest).subscribe({
+      next: () => {
+        // Update individual permissions
+        const permissionRequest: UserPermissionRequest = {
+          userId: this.selectedUser!.id,
+          permissions: newIndividualPermissions
+        };
 
-              const userIndex = this.allUsersData.findIndex(u => u.id === this.selectedUser!.id);
-              if (userIndex !== -1) {
-                this.allUsersData[userIndex].roles = newRoleNames;
-                this.updateUserLists();
-              }
+        this.userService.updateUserPermissions(permissionRequest).subscribe({
+          next: () => {
+            // Handle department head assignment
+            if (selectedDeptHeadId) {
+              const deptHeadRequest: DepartmentHeadRequest = {
+                userId: this.selectedUser!.id,
+                departmentId: parseInt(selectedDeptHeadId)
+              };
 
-              this.closeRolePermissionModal();
-              this.loading = false;
-              this.notificationService.showSuccess(`Roles and permissions updated successfully for "${this.selectedUser!.userName}"!`);
-            },
-            error: (error) => {
-              console.error('Error updating user permissions:', error);
-              this.loading = false;
-              this.notificationService.showError('Error updating user permissions.');
+              this.userService.assignUserAsDepartmentHead(deptHeadRequest).subscribe({
+                next: () => {
+                  this.handleUpdateSuccess();
+                },
+                error: (error) => {
+                  console.error('Error assigning department head:', error);
+                  this.loading = false;
+                  this.notificationService.showError('Roles and permissions updated, but failed to assign department head.');
+                }
+              });
+            } else {
+              this.handleUpdateSuccess();
             }
-          });
-        },
-        error: (error) => {
-          console.error('Error updating user roles:', error);
-          this.loading = false;
-          this.notificationService.showError('Error updating user roles.');
-        }
-      });
-    } else {
-      this.notificationService.showError('No user selected.');
-    }
+          },
+          error: (error) => {
+            console.error('Error updating user permissions:', error);
+            this.loading = false;
+            this.notificationService.showError('Error updating user permissions.');
+          }
+        });
+      },
+      error: (error) => {
+        console.error('Error updating user roles:', error);
+        this.loading = false;
+        this.notificationService.showError('Error updating user roles.');
+      }
+    });
+  }
+}
+private handleUpdateSuccess(): void {
+  const newRoleNames = this.rolePermissionForm.value.roleIds.map((id: string) => {
+    const role = this.roles.find(r => r.id === id);
+    return role ? role.name : '';
+  }).filter((name: string) => name !== '');
+
+  const userIndex = this.allUsersData.findIndex(u => u.id === this.selectedUser!.id);
+  if (userIndex !== -1) {
+    this.allUsersData[userIndex].roles = newRoleNames;
+    this.updateUserLists();
   }
 
+  this.closeRolePermissionModal();
+  this.loading = false;
+  this.notificationService.showSuccess(`Access updated successfully for "${this.selectedUser!.userName}"!`);
+}
   onRoleIdCheckboxChange(event: any, roleId: string): void {
     if (!event || !roleId) return;
     
