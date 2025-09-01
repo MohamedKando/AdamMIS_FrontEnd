@@ -115,8 +115,8 @@ export interface StepAccessResponse {
   providedIn: 'root'
 })
 export class EmployeeService {
-  private readonly apiUrl = 'https://localhost:7209/api/Employees';
-  private readonly LocalapiUrl = 'http://192.168.1.203:8080/api/Employees';
+  private readonly LocalapiUrl = 'https://localhost:7209/api/Employees';
+  private readonly apiUrl = 'http://192.168.1.203:8080/api/Employees';
 
   constructor(private http: HttpClient) {}
 
